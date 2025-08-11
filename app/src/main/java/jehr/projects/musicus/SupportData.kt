@@ -2,6 +2,7 @@ package jehr.projects.musicus
 
 import android.content.ContentResolver
 import android.graphics.BitmapFactory
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
@@ -135,7 +136,7 @@ data class Track(
     fun renderImage() { this.img = bitmapFromPath(this.imgPath!!) }
 
     fun build() {
-        this.renderImage()
+        if (this.imgPath != null) { this.renderImage() } else { this.img = null }
         this.stdLyrics?.build()
         this.trnLyrics?.build()
         this.romLyrics?.build()
@@ -189,7 +190,10 @@ data class FileInfo(
     }
 }
 
-data class MainScreenState(val selected: Int = 1)
+data class MainScreenState(val selected: MainScreenTabs = MainScreenTabs.PLAYLISTS)
+enum class MainScreenTabs(val title: String, val index: Int) {
+    PLAYLISTS("Playlists", 0), ALBUMS("Albums", 2), ARTISTS("Artists", 2)
+}
 data class GlobalState(
     val mainScreen: MainScreenState = MainScreenState(),
     val dataFile: File? = null,
@@ -221,10 +225,9 @@ class GlobalViewModel : ViewModel() {
         for (track in data.tracks) {
             val fullTrack = track.toTrack()
             finalTrackList.add(fullTrack)
-            if (fullTrack.album == null) {
-            } else if (fullTrack.album in state.albums) {
+            if (fullTrack.album != null && (fullTrack.album in state.albums)) {
                 state.albums[fullTrack.album]?.tracks?.add(fullTrack)
-            } else {
+            } else if (fullTrack.album != null) {
                 state.albums.put(fullTrack.album!!, Playlist(mutableListOf(fullTrack), name = fullTrack.album!!))
             }
             for (pl in fullTrack.playlists) {
@@ -243,9 +246,10 @@ class GlobalViewModel : ViewModel() {
             }
         }
         state.trackList.addAll(finalTrackList)
+        this.cleanEmptyCollections()
     }
 
-    fun clean() {
+    fun cleanEmptyCollections() {
         val state = this.internalState.value
         val toDelete = mutableListOf<String>()
         for ((name, list) in state.playlists) {
@@ -274,6 +278,64 @@ class GlobalViewModel : ViewModel() {
         for (name in toDelete) {
             state.albums.remove(name)
         }
+    }
+
+    fun cleanInvalid() {
+        val state = this.internalState.value
+        val toDelete = mutableListOf<Track>()
+        for (track in state.trackList) {
+            val props = listOf(track::stdLyrics, track::trnLyrics, track::romLyrics)
+            if (!File(track.path).exists()) {
+                toDelete.add(track)
+                continue
+            }
+            if (track.imgPath != null && !File(track.imgPath).exists()) {
+                track.imgPath = null
+            }
+            for (prop in props) {
+                if (prop.get()?.path != null && !File(prop.get()?.path).exists()) {
+                    prop.set(null)
+                }
+            }
+        }
+        for (track in toDelete) {
+            if (track.album != null) {
+                state.albums[track.album]?.tracks?.remove(track)
+            }
+            for (pl in track.playlists) {
+                state.playlists[pl]?.tracks?.remove(track)
+            }
+            for (art in track.artists) {
+                state.artists[art]?.tracks?.remove(track)
+            }
+            state.trackList.remove(track)
+        }
+    }
+
+    /**Just the titles for now.*/
+    fun getAllMediaStoreInfo(): List<String>? {
+        val state = this.internalState.value
+        val cr = this.internalState.value.contentResolver ?: return null
+        val returnColumns = null
+        val titles = mutableListOf<String>()
+        val mediaCursor = cr.query(MediaStore.Audio.Media.INTERNAL_CONTENT_URI, returnColumns, null, null, null) ?: return null
+        mediaCursor.apply {
+            val index = getColumnIndex(MediaStore.Audio.Media.TITLE)
+            while (moveToNext()) {
+                titles.add(this.getString(index))
+            }
+        }
+        mediaCursor.close()
+        return titles
+        TODO()
+    }
+
+    fun checkForNewTracks() {
+        /*I have absolutely zero idea hpw to go about this.*/
+        /*Ref: https://stackoverflow.com/questions/6832522/playing-audio-from-mediastore-on-a-media-player-android*/
+        val state = this.internalState.value
+        val mediaList = MediaStore.Audio.Media()
+        TODO()
     }
 }
 

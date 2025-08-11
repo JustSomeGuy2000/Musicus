@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryTabRow
@@ -64,23 +66,23 @@ fun TitleBar() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavRow() {
-    val navElements = listOf("Playlists", "Albums", "Artists")
+    val navElements = MainScreenTabs.entries.toList()
     val gvm: GlobalViewModel = viewModel()
     val state = gvm.publicState.collectAsStateWithLifecycle().value.mainScreen
     val selected = state.selected
-    SecondaryTabRow(selected, modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.secondary) {
-        navElements.forEachIndexed { ind, ele ->
-            Tab(selected == ind, onClick = {gvm.update{gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ind))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
+    SecondaryTabRow(selected.index, modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.secondary) {
+        navElements.forEach { ele ->
+            Tab(selected == ele, onClick = {gvm.update{gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ele))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        ele,
+                        ele.title,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.inversePrimary,
-                        style = if (selected == ind) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                        style = if (selected == ele) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    if (selected == ind) {
+                    if (selected == ele) {
                         Spacer(modifier = Modifier.height(4.dp).fillMaxWidth().background(Color(0xFF2196F3)))
                     }
                 }
@@ -91,9 +93,25 @@ fun NavRow() {
 
 @Composable
 fun MainContent() {
+    val gvm: GlobalViewModel = viewModel()
+    val state = gvm.publicState.collectAsStateWithLifecycle().value
     Surface(shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Placeholder")
+        when (state.mainScreen.selected) {
+            MainScreenTabs.ALBUMS -> {
+                LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
+                    items(10) {
+                        Text("Album")
+                    }
+                }
+            }
+            MainScreenTabs.PLAYLISTS -> {
+                LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
+                    items(10) {
+                        Text("Playlist")
+                    }
+                }
+            }
+            MainScreenTabs.ARTISTS -> {}
         }
     }
 }
