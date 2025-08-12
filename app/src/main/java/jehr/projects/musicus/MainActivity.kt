@@ -3,12 +3,13 @@ package jehr.projects.musicus
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.ViewModelStoreOwner
@@ -18,11 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.io.FileReader
-import java.io.FileWriter
 
 class MainActivity : ComponentActivity() {
     lateinit var dataFile: File
@@ -44,8 +42,9 @@ class MainActivity : ComponentActivity() {
                     try {
                         gvm.arrangeTracks(Json.decodeFromString<JsonContainer>( dataFile.readText()))
                     } catch(e: Exception) {
-                        Log.w("Data reading", "Data read failed: $e.")
+                        Log.e("METADATA READ", "Data read failed: $e.")
                     }
+                    Log.d("MEDIASTORE QUERY", "Result: ${gvm.getAllAudioPaths()}")
                 }
                 NavWrapper()
             }

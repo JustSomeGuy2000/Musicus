@@ -1,8 +1,10 @@
 package jehr.projects.musicus
 
 import android.content.ContentResolver
+import android.database.Cursor
 import android.graphics.BitmapFactory
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
@@ -72,14 +74,11 @@ data class Lyrics(
     var type: LyricsType = LyricsType.PLAINTEXT,
     var autoType: LyricsType = LyricsType.PLAINTEXT,
     var visible: Boolean = true,
-    var lrcFile: FileInfo? = null
+    var lrcFile: File? = null
 ) {
     fun build() {
-        val file = File(this.path)
-        this.lrcFile = FileInfo(file, FileReader(file))
+        this.lrcFile = File(this.path)
     }
-
-    fun close() = this.lrcFile?.close()
 
     fun toSkeleton() = LyricsSkeleton(this.path, this.type, this.autoType, this.visible)
 }
@@ -123,7 +122,6 @@ data class Track(
     var playlists: MutableList<String> = mutableListOf(),
     var artists: MutableList<String> = mutableListOf(),
     var imgPath: String? = null,
-    var img: ImageBitmap? = null,
     val dateAdded: MusicusDate? = null,
     var timesPlayed: Int = 0,
     var stdLyrics: Lyrics? = null,
@@ -133,10 +131,8 @@ data class Track(
     var file: File? = null
 ) {
     var isBuilt = false
-    fun renderImage() { this.img = bitmapFromPath(this.imgPath!!) }
 
     fun build() {
-        if (this.imgPath != null) { this.renderImage() } else { this.img = null }
         this.stdLyrics?.build()
         this.trnLyrics?.build()
         this.romLyrics?.build()
@@ -145,11 +141,7 @@ data class Track(
     }
 
     fun close() {
-        this.stdLyrics?.close()
-        this.trnLyrics?.close()
-        this.romLyrics?.close()
         this.file = null
-        this.img = null
         this.isBuilt = false
     }
 
@@ -158,18 +150,14 @@ data class Track(
 @Serializable
 data class TrackSkeleton(val path: String, val name: String, val originalName: String?, val lang: MutableList<String>, val origin: String, val originInfo: String?, val runtime: Duration, val cover: Boolean, val originalLang: MutableList<String>, val album: String?, val playlists: MutableList<String>, val artists: MutableList<String>, val imgPath: String?, val dateAdded: MusicusDate?, val timesPlayed: Int, val stdLyrics: LyricsSkeleton?, val trnLyrics: LyricsSkeleton?, val romLyrics: LyricsSkeleton?, val selectedLyrics: Int) {
 
-    fun toTrack() = Track(path = this.path, name = this.name, originalName = this.originalName, lang = this.lang, origin = this.origin, originInfo = this.originInfo, runtime = this.runtime, cover = this.cover, originalLang = this.originalLang, album = this.album, playlists = this.playlists, artists = this.artists, imgPath = this.imgPath, img = null, dateAdded = this.dateAdded, timesPlayed = this.timesPlayed, stdLyrics = this.stdLyrics?.toLyrics(), trnLyrics = this.trnLyrics?.toLyrics(), romLyrics = this.romLyrics?.toLyrics(), selectedLyrics = this.selectedLyrics, file = null
+    fun toTrack() = Track(path = this.path, name = this.name, originalName = this.originalName, lang = this.lang, origin = this.origin, originInfo = this.originInfo, runtime = this.runtime, cover = this.cover, originalLang = this.originalLang, album = this.album, playlists = this.playlists, artists = this.artists, imgPath = this.imgPath, dateAdded = this.dateAdded, timesPlayed = this.timesPlayed, stdLyrics = this.stdLyrics?.toLyrics(), trnLyrics = this.trnLyrics?.toLyrics(), romLyrics = this.romLyrics?.toLyrics(), selectedLyrics = this.selectedLyrics, file = null
     )
 }
 
-data class Playlist(var tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var primaryArtist: String? = null, var name: String = "<unknown>", var img: ImageBitmap? = null) {
-    fun renderImage() { this.img = bitmapFromPath(this.imgPath) }
-    fun releaseImage() { this.img = null }
+data class Playlist(var tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var primaryArtist: String? = null, var name: String = "<unknown>") {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
 }
-data class Artist(var tracks: MutableList<Track> = mutableListOf(), var name: String = "<unknown>", var imgPath: String? = null, var img: ImageBitmap? = null) {
-    fun renderImage() { this.img = bitmapFromPath(this.imgPath)}
-    fun releaseImage() { this.img = null }
+data class Artist(var tracks: MutableList<Track> = mutableListOf(), var name: String = "<unknown>", var imgPath: String? = null) {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
 }
 @Serializable
@@ -312,24 +300,46 @@ class GlobalViewModel : ViewModel() {
         }
     }
 
-    /**Just the titles for now.*/
-    fun getAllMediaStoreInfo(): List<String>? {
-        val state = this.internalState.value
-        val cr = this.internalState.value.contentResolver ?: return null
-        val returnColumns = null
-        val titles = mutableListOf<String>()
-        val mediaCursor = cr.query(MediaStore.Audio.Media.INTERNAL_CONTENT_URI, returnColumns, null, null, null) ?: return null
+    /**Retrieve the file paths for all audio present in the MediaStore. Still testing.*/
+    fun getAllAudioPaths(cursor: Cursor? = null): List<String>? {
+        val cr = this.internalState.value.contentResolver
+        if (cr == null) {
+            Log.w("MEDIASTORE QUERY", "No content resolver, aborting.")
+            return null
+        }
+        val returnColumns = arrayOf(MediaStore.Audio.Media.DATA, MediaStore.Audio.Media.IS_MUSIC)
+        val info = mutableListOf<String>()
+        val mediaCursor = cursor ?: cr.query(
+            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
+            returnColumns,
+            null,
+            null,
+            MediaStore.Audio.Media.DEFAULT_SORT_ORDER
+        )
+        if (mediaCursor == null) {
+            Log.w("MEDIASTORE QUERY", "Cursor is null, aborting.")
+            return null
+        }
+        Log.d("MEDIASTORE QUERY", "Amount of returned entries: ${mediaCursor.count}")
         mediaCursor.apply {
-            val index = getColumnIndex(MediaStore.Audio.Media.TITLE)
+            if (!moveToFirst()) {
+                Log.w("MEDIASTORE QUERY", "Cursor is empty, aborting.")
+                return null
+            }
+            val colIndData = mediaCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val colIndMusic = mediaCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.IS_MUSIC)
             while (moveToNext()) {
-                titles.add(this.getString(index))
+                if (true) { /*Replace true with "is music" condition when I find one that works.*/
+                    info.add(mediaCursor.getString(colIndData).toString())
+                    Log.v("MEDIASTORE QUERY", "${mediaCursor.getString(colIndData)}: ${mediaCursor.getString(colIndMusic)}")
+                }
             }
         }
         mediaCursor.close()
-        return titles
-        TODO()
+        return info
     }
 
+    /**Check the MediaStore for files not present in the track list and add them with default parameters.*/
     fun checkForNewTracks() {
         /*I have absolutely zero idea hpw to go about this.*/
         /*Ref: https://stackoverflow.com/questions/6832522/playing-audio-from-mediastore-on-a-media-player-android*/

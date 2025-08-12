@@ -1,5 +1,6 @@
 package jehr.projects.musicus
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,7 +86,7 @@ fun NavRow() {
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     if (selected == ele) {
-                        Spacer(modifier = Modifier.height(4.dp).fillMaxWidth().background(Color(0xFF2196F3)))
+                        Spacer(modifier = Modifier.height(4.dp).fillMaxWidth())
                     }
                 }
             }
@@ -99,19 +102,45 @@ fun MainContent() {
         when (state.mainScreen.selected) {
             MainScreenTabs.ALBUMS -> {
                 LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    items(10) {
-                        Text("Album")
+                    state.albums.forEach {
+                        item(it.value) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Image(painterResource(R.drawable.musicus_no_image), "Album image")
+                                Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
+                                Text(it.value.primaryArtist ?: "<unknown>", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
                     }
                 }
             }
             MainScreenTabs.PLAYLISTS -> {
                 LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    items(10) {
-                        Text("Playlist")
+                    state.playlists.forEach {
+                        item(it.value) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Image(painterResource(R.drawable.musicus_no_image), "Playlist image")
+                                Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
+                                Text(it.value.primaryArtist ?: "<unknown>", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
                     }
                 }
             }
-            MainScreenTabs.ARTISTS -> {}
+            MainScreenTabs.ARTISTS -> {
+                LazyColumn {
+                    state.artists.forEach {
+                        item {
+                            Row {
+                                Image(painterResource(R.drawable.musicus_no_image), "Artist image")
+                                Column {
+                                    Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(it.value.tracks.size.toString(), style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
