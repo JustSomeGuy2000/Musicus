@@ -31,8 +31,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         /*enableEdgeToEdge()*/
         setContent {
-            this.openFileOutput("data.json", Context.MODE_PRIVATE)
+//            this.openFileOutput("data.json", Context.MODE_PRIVATE)
             this.dataFile = File(this.filesDir, "data.json")
+            Log.d("FILE I/O", "Accessed metadata file ${dataFile.path}.")
             this.gvm = viewModel()
             gvm.update {gs -> gs.copy(dataFile = this.dataFile, contentResolver = this.contentResolver)}
             val coroScope = rememberCoroutineScope()
@@ -43,6 +44,8 @@ class MainActivity : ComponentActivity() {
                         gvm.arrangeTracks(Json.decodeFromString<JsonContainer>( dataFile.readText()))
                     } catch(e: Exception) {
                         Log.e("METADATA READ", "Data read failed: $e.")
+                        Log.d("METADATA READ", "Defaulting to example data...")
+                        gvm.arrangeTracks(exJSONContainer)
                     }
                     Log.d("MEDIASTORE QUERY", "Result: ${gvm.getAllAudioPaths()}")
                 }
@@ -51,10 +54,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
+    override fun onPause() {
         val state = this.gvm.publicState.value
-        this.dataFile.writeText(Json.encodeToString(JsonContainer(state.trackList.map{it.toSkeleton()}, state.playlists.map{it.value.toSkeleton()}, state.artists.map{it.value.toSkeleton()}, state.albums.map{it.value.toSkeleton()})))
-        super.onDestroy()
+        val write = Json.encodeToString(JsonContainer(state.trackList.map{it.toSkeleton()}, state.playlists.map{it.value.toSkeleton()}, state.artists.map{it.value.toSkeleton()}, state.albums.map{it.value.toSkeleton()}))
+        this.dataFile.writeText(write)
+        Log.d("FILE I/O", "Wrote to ${this.dataFile.path} with content $write.")
+        super.onPause()
     }
 }
 

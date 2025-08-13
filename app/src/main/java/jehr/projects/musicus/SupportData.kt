@@ -180,7 +180,7 @@ data class FileInfo(
 
 data class MainScreenState(val selected: MainScreenTabs = MainScreenTabs.PLAYLISTS)
 enum class MainScreenTabs(val title: String, val index: Int) {
-    PLAYLISTS("Playlists", 0), ALBUMS("Albums", 2), ARTISTS("Artists", 2)
+    PLAYLISTS("Playlists", 0), ALBUMS("Albums", 1), ARTISTS("Artists", 2)
 }
 data class GlobalState(
     val mainScreen: MainScreenState = MainScreenState(),
@@ -199,6 +199,7 @@ class GlobalViewModel : ViewModel() {
     fun update(updater: (GlobalState) -> GlobalState) = this.internalState.update(updater)
 
     fun arrangeTracks(data: JsonContainer) {
+        Log.d("FILE I/O", "Received data to arrange: $data.")
         val state = this.internalState.value
         val finalTrackList = mutableListOf<Track>()
         for (album in data.albums) {
@@ -331,7 +332,7 @@ class GlobalViewModel : ViewModel() {
             while (moveToNext()) {
                 if (true) { /*Replace true with "is music" condition when I find one that works.*/
                     info.add(mediaCursor.getString(colIndData).toString())
-                    Log.v("MEDIASTORE QUERY", "${mediaCursor.getString(colIndData)}: ${mediaCursor.getString(colIndMusic)}")
+//                    Log.v("MEDIASTORE QUERY", "${mediaCursor.getString(colIndData)}: ${mediaCursor.getString(colIndMusic)}")
                 }
             }
         }
@@ -346,6 +347,32 @@ class GlobalViewModel : ViewModel() {
         val state = this.internalState.value
         val mediaList = MediaStore.Audio.Media()
         TODO()
+    }
+
+    /**Print all tracks, playlists, albums and artists in memory to Logcat.*/
+    fun dump(level: (String, String) -> Unit = Log::v) {
+        val state = this.internalState.value
+        val tag = "GVM DUMP"
+        var info = "Tracks:\n"
+        for ((ind, track) in state.trackList.withIndex()) {
+            info += "$ind: ${track.name} - ${track.artists}\n"
+        }
+        level(tag, info)
+        info = "Albums:\n"
+        for ((ind, album) in state.albums.values.toList().withIndex()) {
+            info += "$ind: ${album.name}"
+        }
+        level(tag, info)
+        info = "Playlists:\n"
+        for ((ind, pl) in state.artists.values.toList().withIndex()) {
+            info += "$ind: ${pl.name}"
+        }
+        level(tag, info)
+        info = "Artists:\n"
+        for ((ind, artist) in state.artists.values.toList().withIndex()) {
+            info += "$ind: ${artist.name}"
+        }
+        level(tag, info)
     }
 }
 
