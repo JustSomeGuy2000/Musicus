@@ -1,10 +1,6 @@
 package jehr.projects.musicus
 
-import android.content.ContentResolver
-import android.database.Cursor
 import android.graphics.BitmapFactory
-import android.provider.MediaStore
-import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
@@ -28,13 +24,13 @@ data class Duration(
     override fun toString(): String =
         "${if (this.hours != 0) this.hours.toString() + ":" else ""}${if (this.minutes != 0) this.minutes.toString() + ":" else "00"}${if (this.seconds != 0) (if (this.seconds < 10) "0" + this.seconds.toString() else this.seconds) else "00"}"
 
-    fun toInt(): Int =
+    fun toMs(): Int =
         this.ms + (this.seconds * 1000) + (this.minutes * 60000) + (this.hours * 360000)
 
     fun toStringWithMs(): String = "${this}${if (this.ms != 0) "." + this.ms.toString() else ""}"
 
     companion object {
-        fun breakDownMs(ms: Double): List<Int> {
+        fun breakDownMs(ms: Int): List<Int> {
             val millis = ms % 1000
             var sec = (ms - (ms % 1000)) / 1000
             var min = (sec - (sec % 60)) / 60
@@ -45,7 +41,7 @@ data class Duration(
         }
     }
 
-    fun decrement(ms: Double) {
+    fun decrement(ms: Int) {
         val time = breakDownMs(ms)
         this.hours -= time[0]
         this.minutes -= time[1]
@@ -53,7 +49,7 @@ data class Duration(
         this.ms -= time[3]
     }
 
-    fun increment(ms: Double) = this.decrement(-ms)
+    fun increment(ms: Int) = this.decrement(-ms)
 }
 
 @Serializable
@@ -154,16 +150,25 @@ data class TrackSkeleton(val path: String, val name: String, val originalName: S
     )
 }
 
-data class Playlist(var tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var primaryArtist: String? = null, var name: String = "<unknown>") {
+open class SongCollection(val tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var name: String = "<unknown>") {
+    fun sumDuration(): Duration {
+        val time = Duration()
+        for (track in this.tracks) {
+            time.increment(track.runtime.toMs())
+        }
+        return time
+    }
+}
+class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = null, var primaryArtist: String? = null, name: String = "<unknown>", val artists: MutableMap<String, Artist> = mutableMapOf()): SongCollection(tracks, imgPath, name) {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
 }
-data class Artist(var tracks: MutableList<Track> = mutableListOf(), var name: String = "<unknown>", var imgPath: String? = null) {
+class Artist(tracks: MutableList<Track> = mutableListOf(), name: String = "<unknown>", imgPath: String? = null, val albums: MutableMap<String, Playlist> = mutableMapOf(), ): SongCollection(tracks, imgPath, name) {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
 }
 @Serializable
 data class SongCollectionSkeleton(val imgPath: String?, val name: String) {
     fun toPlaylist() = Playlist(imgPath = this.imgPath, name = this.name)
-    fun toArtist() = Artist(imgPath = this.imgPath, name = this.name)
+    fun toArtist() = Artist(name = this.name, imgPath = this.imgPath,)
 }
 
 /*GLobal state components and global view model*/
@@ -184,203 +189,22 @@ enum class MainScreenTabs(val title: String, val index: Int) {
 }
 data class GlobalState(
     val mainScreen: MainScreenState = MainScreenState(),
-    val dataFile: File? = null,
-    val trackList: MutableList<Track> = mutableListOf(),
     var selectedTrack: Track? = null,
-    var contentResolver: ContentResolver? = null,
-    val playlists: MutableMap<String, Playlist> = mutableMapOf(),
-    val artists: MutableMap<String, Artist> = mutableMapOf(),
-    val albums: MutableMap<String, Playlist> = mutableMapOf()
 )
 class GlobalViewModel : ViewModel() {
     private val internalState = MutableStateFlow(GlobalState())
     val publicState = this.internalState.asStateFlow()
 
     fun update(updater: (GlobalState) -> GlobalState) = this.internalState.update(updater)
-
-    fun arrangeTracks(data: JsonContainer) {
-        Log.d("FILE I/O", "Received data to arrange: $data.")
-        val state = this.internalState.value
-        val finalTrackList = mutableListOf<Track>()
-        for (album in data.albums) {
-            state.albums.put(album.name, album.toPlaylist())
-        }
-        for (artist in data.artists) {
-            state.artists.put(artist.name, artist.toArtist())
-        }
-        for (playlist in data.playlists) {
-            state.playlists.put(playlist.name, playlist.toPlaylist())
-        }
-        for (track in data.tracks) {
-            val fullTrack = track.toTrack()
-            finalTrackList.add(fullTrack)
-            if (fullTrack.album != null && (fullTrack.album in state.albums)) {
-                state.albums[fullTrack.album]?.tracks?.add(fullTrack)
-            } else if (fullTrack.album != null) {
-                state.albums.put(fullTrack.album!!, Playlist(mutableListOf(fullTrack), name = fullTrack.album!!))
-            }
-            for (pl in fullTrack.playlists) {
-                if (pl in state.playlists) {
-                    state.playlists[pl]?.tracks?.add(fullTrack)
-                } else {
-                    state.playlists.put(pl, Playlist(mutableListOf(fullTrack), name = pl))
-                }
-            }
-            for (a in fullTrack.artists) {
-                if (a in state.artists) {
-                    state.artists[a]?.tracks?.add(fullTrack)
-                } else {
-                    state.artists.put(a, Artist(mutableListOf(fullTrack), name = a))
-                }
-            }
-        }
-        state.trackList.addAll(finalTrackList)
-        this.cleanEmptyCollections()
-    }
-
-    fun cleanEmptyCollections() {
-        val state = this.internalState.value
-        val toDelete = mutableListOf<String>()
-        for ((name, list) in state.playlists) {
-            if (list.tracks.isEmpty()) {
-                toDelete.add(name)
-            }
-        }
-        for (name in toDelete) {
-            state.playlists.remove(name)
-        }
-        toDelete.clear()
-        for ((name, list) in state.artists) {
-            if (list.tracks.isEmpty()) {
-                toDelete.add(name)
-            }
-        }
-        for (name in toDelete) {
-            state.artists.remove(name)
-        }
-        toDelete.clear()
-        for ((name, list) in state.albums) {
-            if (list.tracks.isEmpty()) {
-                toDelete.add(name)
-            }
-        }
-        for (name in toDelete) {
-            state.albums.remove(name)
-        }
-    }
-
-    fun cleanInvalid() {
-        val state = this.internalState.value
-        val toDelete = mutableListOf<Track>()
-        for (track in state.trackList) {
-            val props = listOf(track::stdLyrics, track::trnLyrics, track::romLyrics)
-            if (!File(track.path).exists()) {
-                toDelete.add(track)
-                continue
-            }
-            if (track.imgPath != null && !File(track.imgPath).exists()) {
-                track.imgPath = null
-            }
-            for (prop in props) {
-                if (prop.get()?.path != null && !File(prop.get()?.path).exists()) {
-                    prop.set(null)
-                }
-            }
-        }
-        for (track in toDelete) {
-            if (track.album != null) {
-                state.albums[track.album]?.tracks?.remove(track)
-            }
-            for (pl in track.playlists) {
-                state.playlists[pl]?.tracks?.remove(track)
-            }
-            for (art in track.artists) {
-                state.artists[art]?.tracks?.remove(track)
-            }
-            state.trackList.remove(track)
-        }
-    }
-
-    /**Retrieve the file paths for all audio present in the MediaStore. Still testing.*/
-    fun getAllAudioPaths(cursor: Cursor? = null): List<String>? {
-        val cr = this.internalState.value.contentResolver
-        if (cr == null) {
-            Log.w("MEDIASTORE QUERY", "No content resolver, aborting.")
-            return null
-        }
-        val returnColumns = arrayOf(MediaStore.Audio.Media.DATA, MediaStore.Audio.Media.IS_MUSIC)
-        val info = mutableListOf<String>()
-        val mediaCursor = cursor ?: cr.query(
-            MediaStore.Audio.Media.INTERNAL_CONTENT_URI,
-            returnColumns,
-            null,
-            null,
-            MediaStore.Audio.Media.DEFAULT_SORT_ORDER
-        )
-        if (mediaCursor == null) {
-            Log.w("MEDIASTORE QUERY", "Cursor is null, aborting.")
-            return null
-        }
-        Log.d("MEDIASTORE QUERY", "Amount of returned entries: ${mediaCursor.count}")
-        mediaCursor.apply {
-            if (!moveToFirst()) {
-                Log.w("MEDIASTORE QUERY", "Cursor is empty, aborting.")
-                return null
-            }
-            val colIndData = mediaCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-            val colIndMusic = mediaCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.IS_MUSIC)
-            while (moveToNext()) {
-                if (true) { /*Replace true with "is music" condition when I find one that works.*/
-                    info.add(mediaCursor.getString(colIndData).toString())
-//                    Log.v("MEDIASTORE QUERY", "${mediaCursor.getString(colIndData)}: ${mediaCursor.getString(colIndMusic)}")
-                }
-            }
-        }
-        mediaCursor.close()
-        return info
-    }
-
-    /**Check the MediaStore for files not present in the track list and add them with default parameters.*/
-    fun checkForNewTracks() {
-        /*I have absolutely zero idea hpw to go about this.*/
-        /*Ref: https://stackoverflow.com/questions/6832522/playing-audio-from-mediastore-on-a-media-player-android*/
-        val state = this.internalState.value
-        val mediaList = MediaStore.Audio.Media()
-        TODO()
-    }
-
-    /**Print all tracks, playlists, albums and artists in memory to Logcat.*/
-    fun dump(level: (String, String) -> Unit = Log::v) {
-        val state = this.internalState.value
-        val tag = "GVM DUMP"
-        var info = "Tracks:\n"
-        for ((ind, track) in state.trackList.withIndex()) {
-            info += "$ind: ${track.name} - ${track.artists}\n"
-        }
-        level(tag, info)
-        info = "Albums:\n"
-        for ((ind, album) in state.albums.values.toList().withIndex()) {
-            info += "$ind: ${album.name}"
-        }
-        level(tag, info)
-        info = "Playlists:\n"
-        for ((ind, pl) in state.artists.values.toList().withIndex()) {
-            info += "$ind: ${pl.name}"
-        }
-        level(tag, info)
-        info = "Artists:\n"
-        for ((ind, artist) in state.artists.values.toList().withIndex()) {
-            info += "$ind: ${artist.name}"
-        }
-        level(tag, info)
-    }
 }
 
 /*Routes and their supporting classes*/
 class RouteList
 
 @Serializable
-data object MainScreenRoute
+data class MainScreenRoute(val selected: Int? = null)
+@Serializable
+data class PlaylistScreenRoute(val playlistName: String, val from: MainScreenTabs)
 
 /*Others*/
 @Serializable

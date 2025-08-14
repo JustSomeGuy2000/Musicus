@@ -2,24 +2,24 @@ package jehr.projects.musicus
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import jehr.projects.musicus.ui.theme.MusicusTheme
 
 @Composable
-fun MainScreen() {
+fun MainScreen(startOn: MainScreenRoute) {
     MusicusTheme(dynamicColor = false) {
         Surface(
             modifier = Modifier
@@ -79,7 +80,7 @@ fun NavRow() {
     val selected = state.selected
     SecondaryTabRow(selected.index, modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.secondary) {
         navElements.forEach { ele ->
-            Tab(selected == ele, onClick = {gvm.dump();gvm.update{gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ele))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
+            Tab(selected == ele, onClick = {gvm.update{gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ele))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         ele.title,
@@ -106,12 +107,12 @@ fun MainContent() {
         when (state.mainScreen.selected) {
             MainScreenTabs.ALBUMS -> {
                 LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    state.albums.forEach {
-                        item(it.value) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(painterResource(R.drawable.musicus_no_image), "Album image")
-                                Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
-                                Text(it.value.primaryArtist ?: "<unknown>", style = MaterialTheme.typography.bodyMedium)
+                    musicRepo.albums.forEach {
+                        item {
+                            DisplayTile(R.drawable.musicus_no_image, it.value.name, "${it.value.primaryArtist ?: "<unknown>"} | ${it.value.tracks.size} ${if (it.value.tracks.size == 1) "track" else "tracks"}") {
+                                infoRepo.navController?.navigate(
+                                    PlaylistScreenRoute(it.value.name, MainScreenTabs.ALBUMS)
+                                )
                             }
                         }
                     }
@@ -119,32 +120,67 @@ fun MainContent() {
             }
             MainScreenTabs.PLAYLISTS -> {
                 LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    state.playlists.forEach {
-                        item(it.value) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(painterResource(R.drawable.musicus_no_image), "Playlist image")
-                                Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
-                                Text(it.value.primaryArtist ?: "<unknown>", style = MaterialTheme.typography.bodyMedium)
-                            }
+                    musicRepo.playlists.forEach {
+                        item {
+                            DisplayTile(R.drawable.musicus_no_image, it.value.name, "${it.value.primaryArtist ?: "<unknown>"} | ${it.value.tracks.size} ${if (it.value.tracks.size == 1) "track" else "tracks"}", {
+                                infoRepo.navController?.navigate(
+                                    PlaylistScreenRoute(it.value.name, MainScreenTabs.PLAYLISTS)
+                                )
+                            })
                         }
                     }
                 }
             }
             MainScreenTabs.ARTISTS -> {
                 LazyColumn {
-                    state.artists.forEach {
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    musicRepo.artists.forEach {
                         item {
-                            Row {
-                                Image(painterResource(R.drawable.musicus_no_image), "Artist image")
-                                Column {
-                                    Text(it.value.name, style = MaterialTheme.typography.bodyMedium)
-                                    Text(it.value.tracks.size.toString(), style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
+                            ArtistDisplayRow(R.drawable.musicus_no_image, it.value.name, it.value.tracks.size.toString(), ::TODO)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DisplayTile(imgId: Int, name: String, author: String, nav: () -> Unit) {
+    Box(Modifier.padding(8.dp).clickable(onClick = nav), contentAlignment = Alignment.Center) {
+        Column {
+            Image(painterResource(imgId), "No desc", Modifier.clip(MaterialTheme.shapes.large))
+            Text(name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.inversePrimary)
+            Text(author, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.inversePrimary)
+        }
+    }
+}
+
+@Composable
+fun ArtistDisplayRow(imgId: Int, name: String, size: String, nav: () -> Unit) {
+    Column {
+        Row(modifier = Modifier.fillMaxWidth().clickable(onClick = nav)) {
+            Image(
+                painterResource(imgId),
+                "No desc",
+                modifier = Modifier.size(50.dp).clip(MaterialTheme.shapes.medium)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.height(50.dp), verticalArrangement = Arrangement.Center) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.inversePrimary
+                )
+                Text(
+                    "$size ${if (size == "1") "track" else "tracks"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.inversePrimary
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
