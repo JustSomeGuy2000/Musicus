@@ -1,4 +1,4 @@
-package jehr.projects.musicus
+package jehr.projects.musicus.utils
 
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
+import kotlin.collections.iterator
 
 /*Music-related data*/
 @Serializable
@@ -159,8 +160,45 @@ open class SongCollection(val tracks: MutableList<Track> = mutableListOf(), var 
         return time
     }
 }
-class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = null, var primaryArtist: String? = null, name: String = "<unknown>", val artists: MutableMap<String, Artist> = mutableMapOf()): SongCollection(tracks, imgPath, name) {
+class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = null, var primaryArtist: String? = null, name: String = "<unknown>", val artists: MutableMap<Artist, Int> = mutableMapOf()): SongCollection(tracks, imgPath, name) {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
+
+    /**Populate the artist list with all artists contained within this collection. Automatically sets a primary artist.*/
+    fun sortArtists() {
+        for (track in this.tracks) {
+            for (artist in track.artists) {
+                val trueArtist = musicRepo.artists[artist]!!
+                if (trueArtist !in this.artists) {
+                    this.artists.put(musicRepo.artists[artist]!!, 1)
+                } else {
+                    this.artists[trueArtist] = this.artists[trueArtist]!! + 1
+                }
+            }
+        }
+        this.inferPrimaryArtist()
+    }
+
+    /**Use the information from the artist list to set the primary artist. It is decided as the most proilific artist in this playlist. Ties are broken by first one encountered.*/
+    fun inferPrimaryArtist() {
+        var artistCount: Pair<MutableList<String>, Int> = Pair(mutableListOf(), 0)
+        for ((artist, count) in this.artists) {
+            if (count > artistCount.second) {
+                artistCount = Pair(mutableListOf(artist.name), count)
+            } else if (count == artistCount.second) {
+                artistCount.first.add(artist.name)
+            }
+        }
+        this.primaryArtist = artistCount.first[0]
+    }
+
+    /**Add this album to the album lists of all rleevant artists.*/
+    fun addToArtists() {
+        for (artist in this.artists.keys) {
+            if (this.name !in artist.albums.keys) {
+                artist.albums.put(this.name, this)
+            }
+        }
+    }
 }
 class Artist(tracks: MutableList<Track> = mutableListOf(), name: String = "<unknown>", imgPath: String? = null, val albums: MutableMap<String, Playlist> = mutableMapOf(), ): SongCollection(tracks, imgPath, name) {
     fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
@@ -184,11 +222,13 @@ data class FileInfo(
 }
 
 data class MainScreenState(val selected: MainScreenTabs = MainScreenTabs.PLAYLISTS)
+data class ArtistScreenState(var selected: Int = 0)
 enum class MainScreenTabs(val title: String, val index: Int) {
     PLAYLISTS("Playlists", 0), ALBUMS("Albums", 1), ARTISTS("Artists", 2)
 }
 data class GlobalState(
     val mainScreen: MainScreenState = MainScreenState(),
+    val artistScreenState: ArtistScreenState = ArtistScreenState(),
     var selectedTrack: Track? = null,
 )
 class GlobalViewModel : ViewModel() {
@@ -202,9 +242,11 @@ class GlobalViewModel : ViewModel() {
 class RouteList
 
 @Serializable
-data class MainScreenRoute(val selected: Int? = null)
+data object MainScreenRoute
 @Serializable
-data class PlaylistScreenRoute(val playlistName: String, val from: MainScreenTabs)
+data class PlaylistScreenRoute(val playlistName: String, val from: Int)
+@Serializable
+data class ArtistScreenRoute(val artistName: String)
 
 /*Others*/
 @Serializable

@@ -1,14 +1,16 @@
-package jehr.projects.musicus
+package jehr.projects.musicus.utils
 
 import android.content.ContentResolver
 import android.database.Cursor
 import android.provider.MediaStore
 import android.util.Log
 import androidx.navigation.NavHostController
+import jehr.projects.musicus.MainActivity
 import java.io.File
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.contains
+import kotlin.collections.get
 import kotlin.collections.iterator
 
 class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
@@ -27,13 +29,18 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
         for (playlist in data.playlists) {
             this.playlists.put(playlist.name, playlist.toPlaylist())
         }
-        for (track in data.tracks) {
+        for (track in data.tracks) { //Populate playlists, albums and the general tracks list with tracks.
             val fullTrack = track.toTrack()
             finalTrackList.add(fullTrack)
-            if (fullTrack.album != null && (fullTrack.album in this.albums)) {
-                this.albums[fullTrack.album]?.tracks?.add(fullTrack)
-            } else if (fullTrack.album != null) {
-                this.albums.put(fullTrack.album!!, Playlist(mutableListOf(fullTrack), name = fullTrack.album!!))
+            if (fullTrack.album != null) {
+                if (fullTrack.album in this.albums) {
+                    this.albums[fullTrack.album]?.tracks?.add(fullTrack)
+                } else {
+                    this.albums.put(
+                        fullTrack.album!!,
+                        Playlist(mutableListOf(fullTrack), name = fullTrack.album!!)
+                    )
+                }
             }
             for (pl in fullTrack.playlists) {
                 if (pl in this.playlists) {
@@ -46,11 +53,16 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
                 if (a in this.artists) {
                     this.artists[a]?.tracks?.add(fullTrack)
                 } else {
-                    this.artists.put(a, Artist(mutableListOf(fullTrack), name = a,))
+                    this.artists.put(a, Artist(mutableListOf(fullTrack), name = a))
                 }
             }
         }
         this.tracks.addAll(finalTrackList)
+        for (pl in this.playlists.values) pl.sortArtists() //Populate playlists with artists
+        for (album in this.albums.values) { //Populate albums with artists and artists with albums
+            album.sortArtists()
+            album.addToArtists()
+        }
         this.cleanEmptyCollections()
     }
 
