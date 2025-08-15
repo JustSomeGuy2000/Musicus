@@ -1,4 +1,4 @@
-package jehr.projects.musicus
+package jehr.projects.musicus.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,7 +33,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import jehr.projects.musicus.R
 import jehr.projects.musicus.ui.theme.MusicusTheme
+import jehr.projects.musicus.utils.ArtistScreenRoute
+import jehr.projects.musicus.utils.GlobalViewModel
+import jehr.projects.musicus.utils.MainScreenRoute
+import jehr.projects.musicus.utils.MainScreenTabs
+import jehr.projects.musicus.utils.Playlist
+import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.infoRepo
+import jehr.projects.musicus.utils.musicRepo
 
 @Composable
 fun MainScreen(startOn: MainScreenRoute) {
@@ -47,7 +55,7 @@ fun MainScreen(startOn: MainScreenRoute) {
         ) {
             Column {
                 TitleBar()
-                NavRow()
+                NavRow(startOn)
                 MainContent()
             }
         }
@@ -73,24 +81,25 @@ fun TitleBar() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NavRow() {
+fun NavRow(startOn: MainScreenRoute) {
     val navElements = MainScreenTabs.entries.toList()
     val gvm: GlobalViewModel = viewModel()
     val state = gvm.publicState.collectAsStateWithLifecycle().value.mainScreen
-    val selected = state.selected
-    SecondaryTabRow(selected.index, modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.secondary) {
+    SecondaryTabRow(state.selected.index, modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.secondary) {
         navElements.forEach { ele ->
-            Tab(selected == ele, onClick = {gvm.update{gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ele))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
+            val isSelected = state.selected == ele
+            Tab(isSelected, onClick = {
+                gvm.update{ gs -> gs.copy(mainScreen = gs.mainScreen.copy(selected = ele))}}, modifier = Modifier.background(MaterialTheme.colorScheme.secondary)) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         ele.title,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.inversePrimary,
-                        style = if (selected == ele) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                        style = if (isSelected) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    if (selected == ele) {
+                    if (isSelected) {
                         Spacer(modifier = Modifier.height(4.dp).fillMaxWidth())
                     }
                 }
@@ -106,29 +115,19 @@ fun MainContent() {
     Surface(shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxSize()) {
         when (state.mainScreen.selected) {
             MainScreenTabs.ALBUMS -> {
-                LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    musicRepo.albums.forEach {
-                        item {
-                            DisplayTile(R.drawable.musicus_no_image, it.value.name, "${it.value.primaryArtist ?: "<unknown>"} | ${it.value.tracks.size} ${if (it.value.tracks.size == 1) "track" else "tracks"}") {
-                                infoRepo.navController?.navigate(
-                                    PlaylistScreenRoute(it.value.name, MainScreenTabs.ALBUMS)
-                                )
-                            }
-                        }
-                    }
+                PlaylistGrid(musicRepo.albums) {
+                    infoRepo.navController?.navigate(
+                        PlaylistScreenRoute(it.value.name, MainScreenTabs.ALBUMS.index))
                 }
             }
             MainScreenTabs.PLAYLISTS -> {
-                LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
-                    musicRepo.playlists.forEach {
-                        item {
-                            DisplayTile(R.drawable.musicus_no_image, it.value.name, "${it.value.primaryArtist ?: "<unknown>"} | ${it.value.tracks.size} ${if (it.value.tracks.size == 1) "track" else "tracks"}", {
-                                infoRepo.navController?.navigate(
-                                    PlaylistScreenRoute(it.value.name, MainScreenTabs.PLAYLISTS)
-                                )
-                            })
-                        }
-                    }
+                PlaylistGrid(musicRepo.playlists) {
+                    infoRepo.navController?.navigate(
+                        PlaylistScreenRoute(
+                            it.value.name,
+                            MainScreenTabs.PLAYLISTS.index
+                        )
+                    )
                 }
             }
             MainScreenTabs.ARTISTS -> {
@@ -138,10 +137,23 @@ fun MainContent() {
                     }
                     musicRepo.artists.forEach {
                         item {
-                            ArtistDisplayRow(R.drawable.musicus_no_image, it.value.name, it.value.tracks.size.toString(), ::TODO)
+                            ArtistDisplayRow(R.drawable.musicus_no_image, it.value.name, it.value.tracks.size.toString()) {
+                                infoRepo.navController?.navigate(ArtistScreenRoute(it.key))
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun PlaylistGrid(albums: MutableMap<String, Playlist>, nav: (Map.Entry<String, Playlist>) -> Unit) {
+    LazyVerticalGrid(GridCells.Adaptive(180.dp)) {
+        albums.forEach {
+            item {
+                DisplayTile(R.drawable.musicus_no_image, it.value.name, "${it.value.primaryArtist ?: "<unknown>"} | ${it.value.tracks.size} ${if (it.value.tracks.size == 1) "track" else "tracks"}") { nav(it) }
             }
         }
     }
@@ -162,6 +174,7 @@ fun DisplayTile(imgId: Int, name: String, author: String, nav: () -> Unit) {
 fun ArtistDisplayRow(imgId: Int, name: String, size: String, nav: () -> Unit) {
     Column {
         Row(modifier = Modifier.fillMaxWidth().clickable(onClick = nav)) {
+            Spacer(Modifier.width(10.dp))
             Image(
                 painterResource(imgId),
                 "No desc",

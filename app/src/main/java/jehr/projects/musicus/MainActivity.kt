@@ -16,6 +16,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import jehr.projects.musicus.screens.ArtistScreen
+import jehr.projects.musicus.screens.MainScreen
+import jehr.projects.musicus.screens.PlaylistScreen
+import jehr.projects.musicus.utils.ArtistScreenRoute
+import jehr.projects.musicus.utils.GlobalViewModel
+import jehr.projects.musicus.utils.JsonContainer
+import jehr.projects.musicus.utils.MainScreenRoute
+import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.exJSONContainer
+import jehr.projects.musicus.utils.infoRepo
+import jehr.projects.musicus.utils.musicRepo
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -55,7 +66,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        val write = Json.encodeToString(JsonContainer(musicRepo.tracks.map{it.toSkeleton()}, musicRepo.playlists.map{it.value.toSkeleton()}, musicRepo.artists.map{it.value.toSkeleton()}, musicRepo.albums.map{it.value.toSkeleton()}))
+        val write = Json.encodeToString(
+            JsonContainer(
+                musicRepo.tracks.map { it.toSkeleton() },
+                musicRepo.playlists.map { it.value.toSkeleton() },
+                musicRepo.artists.map { it.value.toSkeleton() },
+                musicRepo.albums.map { it.value.toSkeleton() })
+        )
         this.dataFile.writeText(write)
         Log.d("FILE I/O", "Wrote to ${this.dataFile.path} with content $write.")
         super.onPause()
@@ -67,16 +84,15 @@ class MainActivity : ComponentActivity() {
 fun NavWrapper() {
     val navController = rememberNavController()
     infoRepo.navController = navController
-    NavHost(navController, startDestination = MainScreenRoute()) {
-        composable<MainScreenRoute> {entry -> MainScreen(entry.toRoute()) }
+    NavHost(navController, startDestination = MainScreenRoute) {
+        composable<MainScreenRoute> { entry -> MainScreen(entry.toRoute()) }
         composable<PlaylistScreenRoute> { entry -> PlaylistScreen(entry.toRoute()) }
+        composable<ArtistScreenRoute> { entry -> ArtistScreen(entry.toRoute()) }
     }
 }
 
+/**Bit of a hacky way to implement a global state. Within this, all `viewModel()` calls (should) result in the same one. */
 @Composable
 fun GlobalVmViewer(vmso: ViewModelStoreOwner, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalViewModelStoreOwner provides vmso) { content() }
 }
-
-//TODO: Implement a way to set the main screen state through the route (so returning from the artists or albums screen doesn't take you to the default playlists state)
-//TODO: Register albums in artists and artists in playlists (albums and playlists).

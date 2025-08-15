@@ -1,7 +1,8 @@
-package jehr.projects.musicus
+package jehr.projects.musicus.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,18 +28,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import jehr.projects.musicus.R
 import jehr.projects.musicus.ui.theme.MusicusTheme
+import jehr.projects.musicus.utils.Duration
+import jehr.projects.musicus.utils.MainScreenRoute
+import jehr.projects.musicus.utils.Playlist
+import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.infoRepo
+import jehr.projects.musicus.utils.musicRepo
 
 @Composable
 fun PlaylistScreen(playlist: PlaylistScreenRoute) {
-    var from: Int
-    var pl: Playlist? = null
-    if (playlist.from == MainScreenTabs.PLAYLISTS) {
-        pl = musicRepo.playlists[playlist.playlistName]!!
-        from = 0
+    val pl = if (playlist.from == 0) {
+        musicRepo.playlists[playlist.playlistName]!!
     } else {
-        pl = musicRepo.albums[playlist.playlistName]!!
-        from = 1
+        musicRepo.albums[playlist.playlistName]!!
     }
     MusicusTheme(dynamicColor = false) {
         Surface(
@@ -48,7 +52,7 @@ fun PlaylistScreen(playlist: PlaylistScreenRoute) {
                 .statusBarsPadding(), color = MaterialTheme.colorScheme.secondary
         ) {
             Column {
-                PlaylistHeader(pl, from)
+                PlaylistHeader(pl)
                 PlaylistBody(pl)
             }
         }
@@ -56,9 +60,9 @@ fun PlaylistScreen(playlist: PlaylistScreenRoute) {
 }
 
 @Composable
-fun PlaylistHeader(playlist: Playlist, from: Int) {
+fun PlaylistHeader(playlist: Playlist) {
     Box {
-        IconButton({infoRepo.navController?.navigate(MainScreenRoute(from))}) { Image(Icons.AutoMirrored.Filled.ArrowBack, "Back to main screen") }
+        IconButton({ infoRepo.navController?.popBackStack()}) { Image(Icons.AutoMirrored.Filled.ArrowBack, "Back to main screen") }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
                 painterResource(R.drawable.musicus_no_image),
@@ -88,7 +92,7 @@ fun PlaylistBody(playlist: Playlist) {
         LazyColumn {
             playlist.tracks.forEachIndexed { ind, track ->
                 item {
-                    TrackDisplayRow(ind, track.name)
+                    TrackDisplayRow(ind, track.name, track.runtime)
                 }
             }
         }
@@ -96,24 +100,31 @@ fun PlaylistBody(playlist: Playlist) {
 }
 
 @Composable
-fun TrackDisplayRow(pos: Int, name: String) {
+fun TrackDisplayRow(pos: Int, name: String, runtime: Duration) {
     Column {
-        Spacer(Modifier.height(5.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Spacer(Modifier.width(20.dp))
-            Text(
-                "$pos",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.inversePrimary
-            )
-            Spacer(Modifier.width(20.dp))
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.inversePrimary
-            )
+        Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
+            Row {
+                Spacer(Modifier.width(20.dp))
+                Text(
+                    "${pos + 1}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.inversePrimary
+                )
+                Spacer(Modifier.width(20.dp))
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.inversePrimary
+                )
+            }
+            Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.End) {
+                Text("$runtime", Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.inversePrimary)
+                Spacer(Modifier.width(15.dp))
+                IconButton(onClick = ::TODO) {
+                    Image(Icons.Default.MoreVert, "More options (coming soon)")
+                }
+            }
         }
-        Spacer(Modifier.height(5.dp))
         HorizontalDivider()
     }
 }
