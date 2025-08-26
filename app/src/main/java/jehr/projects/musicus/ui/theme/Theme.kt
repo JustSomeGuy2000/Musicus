@@ -1,15 +1,11 @@
 package jehr.projects.musicus.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple40,
@@ -34,6 +30,12 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
+
+data class ColourScheme(val background: Color, val foreground: Color, val text: Color)
+
+val lightColourScheme = ColourScheme(greyD2, white, black)
+val darkColourScheme = ColourScheme(greyD4, greyD3, white)
+var colourScheme = lightColourScheme
 
 @Composable
 fun MusicusTheme(

@@ -1,6 +1,9 @@
 package jehr.projects.musicus.utils
 
 import android.graphics.BitmapFactory
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
@@ -11,7 +14,6 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
-import kotlin.collections.iterator
 
 /*Music-related data*/
 @Serializable
@@ -33,10 +35,10 @@ data class Duration(
     companion object {
         fun breakDownMs(ms: Int): List<Int> {
             val millis = ms % 1000
-            var sec = (ms - (ms % 1000)) / 1000
-            var min = (sec - (sec % 60)) / 60
+            var sec = (ms - (ms % 1000)) / 1000.0
+            var min = (sec - (sec % 60)) / 60.0
             sec -= min * 60
-            val hrs = (min - (min % 60)) / 60
+            val hrs = (min - (min % 60)) / 60.0
             min -= hrs * 60
             return listOf(hrs.toInt(), min.toInt(), sec.toInt(), millis.toInt())
         }
@@ -125,7 +127,8 @@ data class Track(
     var trnLyrics: Lyrics? = null,
     var romLyrics: Lyrics? = null,
     var selectedLyrics: Int = 0,
-    var file: File? = null
+    var file: File? = null,
+    var desc: String? = null
 ) {
     var isBuilt = false
 
@@ -142,16 +145,31 @@ data class Track(
         this.isBuilt = false
     }
 
-    fun toSkeleton() = TrackSkeleton(this.path, this.name, this.originalName, this.lang, this.origin, this.originInfo, this.runtime, this.cover, this.originalLang, this.album, this.playlists, this.artists, this.imgPath, this.dateAdded, this.timesPlayed, this.stdLyrics?.toSkeleton(), this.trnLyrics?.toSkeleton(), this.romLyrics?.toSkeleton(), this.selectedLyrics)
+    /**Remove this track from every collection that includes it, effectively erasing it from the app.*/
+    fun delete() {
+        for (art in this.artists) {
+            musicRepo.artists[art]?.tracks?.remove(this)
+        }
+        for (pl in this.playlists) {
+            musicRepo.playlists[pl]?.tracks?.remove(this)
+        }
+        if (this.album != null) {
+            musicRepo.albums[this.album]?.tracks?.remove(this)
+        }
+        musicRepo.tracks.remove(this)
+        this.close()
+    }
+
+    fun toSkeleton() = TrackSkeleton(this.path, this.name, this.originalName, this.lang, this.origin, this.originInfo, this.runtime, this.cover, this.originalLang, this.album, this.playlists, this.artists, this.imgPath, this.dateAdded, this.timesPlayed, this.stdLyrics?.toSkeleton(), this.trnLyrics?.toSkeleton(), this.romLyrics?.toSkeleton(), this.selectedLyrics, this.desc)
 }
 @Serializable
-data class TrackSkeleton(val path: String, val name: String, val originalName: String?, val lang: MutableList<String>, val origin: String, val originInfo: String?, val runtime: Duration, val cover: Boolean, val originalLang: MutableList<String>, val album: String?, val playlists: MutableList<String>, val artists: MutableList<String>, val imgPath: String?, val dateAdded: MusicusDate?, val timesPlayed: Int, val stdLyrics: LyricsSkeleton?, val trnLyrics: LyricsSkeleton?, val romLyrics: LyricsSkeleton?, val selectedLyrics: Int) {
+data class TrackSkeleton(val path: String, val name: String, val originalName: String?, val lang: MutableList<String>, val origin: String, val originInfo: String?, val runtime: Duration, val cover: Boolean, val originalLang: MutableList<String>, val album: String?, val playlists: MutableList<String>, val artists: MutableList<String>, val imgPath: String?, val dateAdded: MusicusDate?, val timesPlayed: Int, val stdLyrics: LyricsSkeleton?, val trnLyrics: LyricsSkeleton?, val romLyrics: LyricsSkeleton?, val selectedLyrics: Int, val desc: String?) {
 
-    fun toTrack() = Track(path = this.path, name = this.name, originalName = this.originalName, lang = this.lang, origin = this.origin, originInfo = this.originInfo, runtime = this.runtime, cover = this.cover, originalLang = this.originalLang, album = this.album, playlists = this.playlists, artists = this.artists, imgPath = this.imgPath, dateAdded = this.dateAdded, timesPlayed = this.timesPlayed, stdLyrics = this.stdLyrics?.toLyrics(), trnLyrics = this.trnLyrics?.toLyrics(), romLyrics = this.romLyrics?.toLyrics(), selectedLyrics = this.selectedLyrics, file = null
+    fun toTrack() = Track(path = this.path, name = this.name, originalName = this.originalName, lang = this.lang, origin = this.origin, originInfo = this.originInfo, runtime = this.runtime, cover = this.cover, originalLang = this.originalLang, album = this.album, playlists = this.playlists, artists = this.artists, imgPath = this.imgPath, dateAdded = this.dateAdded, timesPlayed = this.timesPlayed, stdLyrics = this.stdLyrics?.toLyrics(), trnLyrics = this.trnLyrics?.toLyrics(), romLyrics = this.romLyrics?.toLyrics(), selectedLyrics = this.selectedLyrics, file = null, desc = this.desc
     )
 }
 
-open class SongCollection(val tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var name: String = "<unknown>") {
+open class SongCollection(val tracks: MutableList<Track> = mutableListOf(), var imgPath: String? = null, var name: String = "<unknown>", var desc: String? = null) {
     fun sumDuration(): Duration {
         val time = Duration()
         for (track in this.tracks) {
@@ -160,8 +178,8 @@ open class SongCollection(val tracks: MutableList<Track> = mutableListOf(), var 
         return time
     }
 }
-class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = null, var primaryArtist: String? = null, name: String = "<unknown>", val artists: MutableMap<Artist, Int> = mutableMapOf()): SongCollection(tracks, imgPath, name) {
-    fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
+class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = null, var primaryArtist: String? = null, name: String = "<unknown>", val artists: MutableMap<Artist, Int> = mutableMapOf(), desc: String? = null): SongCollection(tracks, imgPath, name, desc) {
+    fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name, this.desc)
 
     /**Populate the artist list with all artists contained within this collection. Automatically sets a primary artist.*/
     fun sortArtists() {
@@ -200,13 +218,13 @@ class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = 
         }
     }
 }
-class Artist(tracks: MutableList<Track> = mutableListOf(), name: String = "<unknown>", imgPath: String? = null, val albums: MutableMap<String, Playlist> = mutableMapOf(), ): SongCollection(tracks, imgPath, name) {
-    fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name)
+class Artist(tracks: MutableList<Track> = mutableListOf(), name: String = "<unknown>", imgPath: String? = null, val albums: MutableMap<String, Playlist> = mutableMapOf(), desc: String? = null): SongCollection(tracks, imgPath, name, desc) {
+    fun toSkeleton() = SongCollectionSkeleton(this.imgPath, this.name, this.desc)
 }
 @Serializable
-data class SongCollectionSkeleton(val imgPath: String?, val name: String) {
-    fun toPlaylist() = Playlist(imgPath = this.imgPath, name = this.name)
-    fun toArtist() = Artist(name = this.name, imgPath = this.imgPath,)
+data class SongCollectionSkeleton(val imgPath: String?, val name: String, val desc: String?) {
+    fun toPlaylist() = Playlist(imgPath = this.imgPath, name = this.name, desc = this.desc)
+    fun toArtist() = Artist(name = this.name, imgPath = this.imgPath, desc = this.desc)
 }
 
 /*GLobal state components and global view model*/
@@ -222,13 +240,15 @@ data class FileInfo(
 }
 
 data class MainScreenState(val selected: MainScreenTabs = MainScreenTabs.PLAYLISTS)
-data class ArtistScreenState(var selected: Int = 0)
+data class ArtistScreenState(var selected: Int = 0, var editing: Boolean = false)
+data class PlaylistScreenState(var editing: Boolean = false)
 enum class MainScreenTabs(val title: String, val index: Int) {
-    PLAYLISTS("Playlists", 0), ALBUMS("Albums", 1), ARTISTS("Artists", 2)
+    PLAYLISTS("Playlists", 0), ALBUMS("Albums", 1), ARTISTS("Artists", 2), TRACKS("Tracks", 3)
 }
 data class GlobalState(
     val mainScreen: MainScreenState = MainScreenState(),
     val artistScreenState: ArtistScreenState = ArtistScreenState(),
+    val playlistScreenState: PlaylistScreenState = PlaylistScreenState(),
     var selectedTrack: Track? = null,
 )
 class GlobalViewModel : ViewModel() {
@@ -251,3 +271,8 @@ data class ArtistScreenRoute(val artistName: String)
 /*Others*/
 @Serializable
 data class JsonContainer(val tracks: List<TrackSkeleton>, val playlists: List<SongCollectionSkeleton>, val artists: List<SongCollectionSkeleton>, val albums: List<SongCollectionSkeleton>)
+
+@Composable
+fun StandardBodyText(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.inversePrimary)
+}

@@ -2,6 +2,8 @@ package jehr.projects.musicus.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,18 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import jehr.projects.musicus.ui.theme.MusicusTheme
+import jehr.projects.musicus.ui.theme.colourScheme
 import jehr.projects.musicus.utils.Artist
 import jehr.projects.musicus.utils.ArtistScreenRoute
 import jehr.projects.musicus.utils.GlobalViewModel
@@ -41,15 +45,19 @@ import jehr.projects.musicus.utils.musicRepo
 @Composable
 fun ArtistScreen(route: ArtistScreenRoute) {
     val artist = musicRepo.artists[route.artistName] ?: Artist()
+    val gvm: GlobalViewModel = viewModel()
     MusicusTheme(dynamicColor = false) {
+        val mis = remember{ MutableInteractionSource() }
         Surface(
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.secondary)
+                .background(colourScheme.background)
                 .fillMaxSize()
-                .statusBarsPadding(), color = MaterialTheme.colorScheme.secondary
+                .statusBarsPadding()
+                .clickable(mis, null) {gvm.update{gs -> gs.copy(artistScreenState = gs.artistScreenState.copy(editing = false))}},
+                color = colourScheme.background
         ) {
             Column {
-                ArtistHeader(artist.name)
+                ArtistHeader(artist)
                 ArtistNavBar(artist)
                 ArtistBodyTracks(artist)
             }
@@ -58,12 +66,49 @@ fun ArtistScreen(route: ArtistScreenRoute) {
 }
 
 @Composable
-fun ArtistHeader(name: String) {
-    Row {
-        IconButton({ infoRepo.navController?.popBackStack()}) {
-            Image(Icons.AutoMirrored.Filled.ArrowBack, "Back to main screen")
+fun ArtistHeader(artist: Artist) {
+    val gvm: GlobalViewModel = viewModel()
+    val editing = gvm.publicState.collectAsStateWithLifecycle().value.artistScreenState.editing
+    Column(Modifier.fillMaxWidth()) {
+        Row {
+            IconButton({gvm.update{gs -> gs.copy(artistScreenState = gs.artistScreenState.copy(editing = false))}; infoRepo.navController?.popBackStack()}) {
+                Image(Icons.AutoMirrored.Filled.ArrowBack, "Back to main screen")
+            }
+            Text(
+                artist.name,
+                Modifier.align(Alignment.CenterVertically),
+                style = MaterialTheme.typography.titleLarge,
+                color = colourScheme.text
+            )
         }
-        Text(name, Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.inversePrimary)
+        if (editing) {
+            val editingDesc = remember{mutableStateOf(artist.desc ?: "")}
+            TextField(editingDesc.value, {new -> artist.desc = new; editingDesc.value = new}, placeholder = {Text("Enter description here")})
+        } else {
+            if (artist.desc != null && artist.desc != "") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(15.dp))
+                    Text(
+                        artist.desc!!,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colourScheme.text
+                    )
+                    IconButton({ gvm.update{gs -> gs.copy(artistScreenState = gs.artistScreenState.copy(editing = true))}}) {
+                        Icon(Icons.Default.Create, "Change description")
+                    }
+                }
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    Button({ gvm.update{gs -> gs.copy(artistScreenState = gs.artistScreenState.copy(editing = true))}}) {
+                        Text(
+                            "Add Description",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colourScheme.text
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

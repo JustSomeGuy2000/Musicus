@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.tooling.preview.Preview
@@ -19,6 +20,9 @@ import androidx.navigation.toRoute
 import jehr.projects.musicus.screens.ArtistScreen
 import jehr.projects.musicus.screens.MainScreen
 import jehr.projects.musicus.screens.PlaylistScreen
+import jehr.projects.musicus.ui.theme.colourScheme
+import jehr.projects.musicus.ui.theme.darkColourScheme
+import jehr.projects.musicus.ui.theme.lightColourScheme
 import jehr.projects.musicus.utils.ArtistScreenRoute
 import jehr.projects.musicus.utils.GlobalViewModel
 import jehr.projects.musicus.utils.JsonContainer
@@ -29,10 +33,8 @@ import jehr.projects.musicus.utils.infoRepo
 import jehr.projects.musicus.utils.musicRepo
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.io.File
 
 class MainActivity : ComponentActivity() {
-    lateinit var dataFile: File
     lateinit var gvm: GlobalViewModel
 
     @SuppressLint("CoroutineCreationDuringComposition")
@@ -73,8 +75,8 @@ class MainActivity : ComponentActivity() {
                 musicRepo.artists.map { it.value.toSkeleton() },
                 musicRepo.albums.map { it.value.toSkeleton() })
         )
-        this.dataFile.writeText(write)
-        Log.d("FILE I/O", "Wrote to ${this.dataFile.path} with content $write.")
+        infoRepo.dataFile?.writeText(write)
+        Log.d("FILE I/O", "Wrote to ${infoRepo.dataFile?.path} with content $write.")
         super.onPause()
     }
 }
@@ -82,6 +84,11 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "Main Menu Light")
 @Composable
 fun NavWrapper() {
+    if (isSystemInDarkTheme()) {
+        colourScheme = darkColourScheme
+    } else {
+        colourScheme = lightColourScheme
+    }
     val navController = rememberNavController()
     infoRepo.navController = navController
     NavHost(navController, startDestination = MainScreenRoute) {

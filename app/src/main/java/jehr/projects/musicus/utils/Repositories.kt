@@ -96,7 +96,7 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
         }
     }
 
-    fun cleanInvalid() {
+    fun cleanInvalidPaths() {
         val toDelete = mutableListOf<Track>()
         for (track in this.tracks) {
             val props = listOf(track::stdLyrics, track::trnLyrics, track::romLyrics)
@@ -197,6 +197,23 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
         /*Ref: https://stackoverflow.com/questions/6832522/playing-audio-from-mediastore-on-a-media-player-android*/
         val mediaList = MediaStore.Audio.Media()
         TODO()
+    }
+
+    /**Remove duplicate entries from the track list. Not sure why they would crop up in the first place, but they do.*/
+    fun deduplicate() {
+        val toRemove = mutableListOf<Track>()
+        for (track in this.tracks) {
+            Log.d("DEDUPLICATION", "Track: $track")
+            Log.d("DEDUPLICATION", "First encounter: ${this.tracks.indexOf(track)}")
+            Log.d("DEDUPLICATION", "Last encounter: ${this.tracks.lastIndexOf(track)}")
+            if (this.tracks.indexOf(track) != this.tracks.lastIndexOf(track) && track !in toRemove) {
+                toRemove.add(track)
+            }
+        }
+        for (track in toRemove) {
+            Log.d("DEDUPLICATION", "Removing track $track")
+            track.delete()
+        }
     }
 }
 

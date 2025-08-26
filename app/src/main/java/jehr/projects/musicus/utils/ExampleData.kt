@@ -20,7 +20,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 0
+        selectedLyrics = 0,
+        desc = "Hikikomori is the way of justice!"
     ),
     TrackSkeleton(
         path = "",
@@ -41,7 +42,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 1
+        selectedLyrics = 1,
+        desc = null
     ),
     TrackSkeleton(
         path = "",
@@ -62,7 +64,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 2
+        selectedLyrics = 2,
+        desc = null
     ),
     TrackSkeleton(
         path = "",
@@ -83,7 +86,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 0
+        selectedLyrics = 0,
+        desc = "The things that happened and will not happen again."
     ),
     TrackSkeleton(
         path = "",
@@ -104,7 +108,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 0
+        selectedLyrics = 0,
+        desc = null
     ),
     TrackSkeleton(
         path = "",
@@ -125,7 +130,8 @@ private val exampleData = listOf(
         stdLyrics = null,
         trnLyrics = null,
         romLyrics = null,
-        selectedLyrics = 1
+        selectedLyrics = 1,
+        desc = "The longing to ruminate among the raindrops."
     )
 )
 
