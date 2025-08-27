@@ -134,7 +134,7 @@ fun ArtistBodyTracks(artist: Artist) {
             LazyColumn {
                 artist.tracks.forEachIndexed { ind, track ->
                     item {
-                        TrackDisplayRow(ind, track.name, track.runtime)
+                        TrackDisplayRow(ind, track)
                     }
                 }
             }

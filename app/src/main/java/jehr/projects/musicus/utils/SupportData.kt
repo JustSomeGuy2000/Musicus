@@ -1,6 +1,7 @@
 package jehr.projects.musicus.utils
 
 import android.graphics.BitmapFactory
+import androidx.annotation.IntRange
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +57,11 @@ data class Duration(
 }
 
 @Serializable
-data class MusicusDate(val day: Int, val month: Int, val year: Int)
+data class MusicusDate(val day: Int, val month: Int, val year: Int) {
+    override fun toString(): String {
+        return "$day/$month/$year"
+    }
+}
 
 enum class LyricsType {
     PLAINTEXT, LRC, ELRC;
@@ -196,7 +201,7 @@ class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = 
         this.inferPrimaryArtist()
     }
 
-    /**Use the information from the artist list to set the primary artist. It is decided as the most proilific artist in this playlist. Ties are broken by first one encountered.*/
+    /**Use the information from the artist list to set the primary artist. It is decided as the most prolific artist in this playlist. Ties are broken by first one encountered.*/
     fun inferPrimaryArtist() {
         var artistCount: Pair<MutableList<String>, Int> = Pair(mutableListOf(), 0)
         for ((artist, count) in this.artists) {
@@ -264,9 +269,13 @@ class RouteList
 @Serializable
 data object MainScreenRoute
 @Serializable
-data class PlaylistScreenRoute(val playlistName: String, val from: Int)
+data class PlaylistScreenRoute(val playlistName: String, @param:IntRange(0, 1) val from: Int)
 @Serializable
 data class ArtistScreenRoute(val artistName: String)
+@Serializable
+data class TrackDataScreenRoute(val trackPos: Int)
+@Serializable
+data class TrackEditScreenRoute(val trackPos: Int)
 
 /*Others*/
 @Serializable

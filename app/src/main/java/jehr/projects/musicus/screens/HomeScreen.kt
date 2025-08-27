@@ -19,9 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +50,8 @@ import jehr.projects.musicus.utils.MainScreenRoute
 import jehr.projects.musicus.utils.MainScreenTabs
 import jehr.projects.musicus.utils.Playlist
 import jehr.projects.musicus.utils.PlaylistScreenRoute
-import jehr.projects.musicus.utils.exJSONContainer
+import jehr.projects.musicus.utils.Track
+import jehr.projects.musicus.utils.TrackDataScreenRoute
 import jehr.projects.musicus.utils.infoRepo
 import jehr.projects.musicus.utils.musicRepo
 
@@ -177,7 +180,7 @@ fun MainContent() {
                                     R.drawable.musicus_no_image,
                                     it.name,
                                     it.artists.joinToString(", "),
-                                    {})
+                                    {}) {TrackOptionsButton(it)}
                             }
                         }
                     }
@@ -214,32 +217,65 @@ fun DisplayTile(imgId: Int, name: String, author: String, nav: () -> Unit) {
 @Composable
 fun DisplayRow(imgId: Int, title: String, subtitle: String, onClick: () -> Unit, right: @Composable () -> Unit = {}) {
     Column {
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)) {
-            Spacer(Modifier.width(10.dp))
-            Image(
-                painterResource(imgId),
-                "No desc",
+        Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
+            Row(
                 modifier = Modifier
-                    .size(50.dp)
-                    .clip(MaterialTheme.shapes.medium)
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.height(50.dp), verticalArrangement = Arrangement.Center) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colourScheme.text
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+            ) {
+                Spacer(Modifier.width(10.dp))
+                Image(
+                    painterResource(imgId),
+                    "No desc",
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(MaterialTheme.shapes.medium)
                 )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colourScheme.text
-                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.height(50.dp), verticalArrangement = Arrangement.Center) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colourScheme.text
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colourScheme.text
+                    )
+                }
             }
-            right()
+            Row(
+                Modifier.align(Alignment.CenterEnd),
+                horizontalArrangement = Arrangement.End
+            ) {
+                right()
+            }
         }
+
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun TrackOptionsButton(target: Track) {
+    val expanded = remember{ mutableStateOf(false) }
+    Box {
+        IconButton({ expanded.value = true }) {
+            Icon(Icons.Default.MoreVert, "More options")
+        }
+        DropdownMenu(expanded.value, {expanded.value = false}) {
+            DropdownMenuItem({Text("Add")}, {TODO()})
+            DropdownMenuItem({Text("Delete")}, {TODO()})
+            DropdownMenuItem({Text("Details")}, {infoRepo.navController?.navigate(
+                TrackDataScreenRoute(musicRepo.tracks.indexOf(target)))})
+            DropdownMenuItem({Text("Album")}, {infoRepo.navController?.navigate(PlaylistScreenRoute(target.album!!, 1))}, enabled = (target.album != null))
+            for (artist in target.artists) {
+                val trueArtist = musicRepo.artists[artist]
+                DropdownMenuItem({Text("See $artist", overflow = TextOverflow.Ellipsis)}, {infoRepo.navController?.navigate(
+                    ArtistScreenRoute(artist))}, enabled = (trueArtist != null))
+            }
+            DropdownMenuItem({Text("See file location")}, {TODO()})
+        }
     }
 }

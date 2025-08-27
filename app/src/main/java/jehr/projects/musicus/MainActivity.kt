@@ -19,6 +19,8 @@ import androidx.navigation.toRoute
 import jehr.projects.musicus.screens.ArtistScreen
 import jehr.projects.musicus.screens.MainScreen
 import jehr.projects.musicus.screens.PlaylistScreen
+import jehr.projects.musicus.screens.TrackDataScreen
+import jehr.projects.musicus.screens.TrackEditScreen
 import jehr.projects.musicus.ui.theme.colourScheme
 import jehr.projects.musicus.ui.theme.darkColourScheme
 import jehr.projects.musicus.ui.theme.lightColourScheme
@@ -28,6 +30,8 @@ import jehr.projects.musicus.utils.GlobalViewModel
 import jehr.projects.musicus.utils.JsonContainer
 import jehr.projects.musicus.utils.MainScreenRoute
 import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.TrackDataScreenRoute
+import jehr.projects.musicus.utils.TrackEditScreenRoute
 import jehr.projects.musicus.utils.debugLog
 import jehr.projects.musicus.utils.exJSONContainer
 import jehr.projects.musicus.utils.infoRepo
@@ -58,7 +62,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 musicRepo.arrangeTracks(Json.decodeFromString<JsonContainer>( infoRepo.dataFile!!.readText()))
-                musicRepo.dump()
             } catch(e: Exception) {
                 debugLog("e", DebugSettings.MetadataRead, "Data read failed: $e.")
                 debugLog("d", DebugSettings.MetadataRead, "Defaulting to example data...")
@@ -77,7 +80,6 @@ class MainActivity : ComponentActivity() {
                 musicRepo.artists.map { it.value.toSkeleton() },
                 musicRepo.albums.map { it.value.toSkeleton() })
         )
-        musicRepo.dump()
         infoRepo.dataFile?.writeText(write)
         debugLog("d", DebugSettings.FileIO, "Wrote to ${infoRepo.dataFile?.path} with content $write.")
         super.onPause()
@@ -98,6 +100,8 @@ fun NavWrapper() {
         composable<MainScreenRoute> { entry -> MainScreen(entry.toRoute()) }
         composable<PlaylistScreenRoute> { entry -> PlaylistScreen(entry.toRoute()) }
         composable<ArtistScreenRoute> { entry -> ArtistScreen(entry.toRoute()) }
+        composable<TrackDataScreenRoute> { entry -> TrackDataScreen(entry.toRoute()) }
+        composable<TrackEditScreenRoute> { entry -> TrackEditScreen(entry.toRoute()) }
     }
 }
 
@@ -106,7 +110,3 @@ fun NavWrapper() {
 fun GlobalVmViewer(vmso: ViewModelStoreOwner, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalViewModelStoreOwner provides vmso) { content() }
 }
-
-// When the app is exited, songs are not duplicated.
-// When the app is re-entered, songs are not duplicated in JSON, but they are in the track list.
-// Something is wrong with the JSON unpacking mechanism.

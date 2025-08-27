@@ -31,10 +31,10 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
-data class ColourScheme(val background: Color, val foreground: Color, val text: Color)
+data class ColourScheme(val background: Color, val foreground: Color, val text: Color, val label: Color)
 
-val lightColourScheme = ColourScheme(greyD2, white, black)
-val darkColourScheme = ColourScheme(greyD4, greyD3, white)
+val lightColourScheme = ColourScheme(greyD2, white, black, greyD2)
+val darkColourScheme = ColourScheme(greyD4, greyD3, white, greyD3)
 var colourScheme = lightColourScheme
 
 @Composable

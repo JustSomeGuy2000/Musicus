@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,10 +40,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import jehr.projects.musicus.R
 import jehr.projects.musicus.ui.theme.MusicusTheme
 import jehr.projects.musicus.ui.theme.colourScheme
-import jehr.projects.musicus.utils.Duration
 import jehr.projects.musicus.utils.GlobalViewModel
 import jehr.projects.musicus.utils.Playlist
 import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.Track
 import jehr.projects.musicus.utils.infoRepo
 import jehr.projects.musicus.utils.musicRepo
 
@@ -152,7 +151,7 @@ fun PlaylistBody(playlist: Playlist) {
         LazyColumn {
             playlist.tracks.forEachIndexed { ind, track ->
                 item {
-                    TrackDisplayRow(ind, track.name, track.runtime)
+                    TrackDisplayRow(ind, track)
                 }
             }
         }
@@ -160,7 +159,7 @@ fun PlaylistBody(playlist: Playlist) {
 }
 
 @Composable
-fun TrackDisplayRow(pos: Int, name: String, runtime: Duration) {
+fun TrackDisplayRow(pos: Int, track: Track) {
     Column {
         Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
             Row {
@@ -172,17 +171,15 @@ fun TrackDisplayRow(pos: Int, name: String, runtime: Duration) {
                 )
                 Spacer(Modifier.width(20.dp))
                 Text(
-                    name,
+                    track.name,
                     style = MaterialTheme.typography.bodyLarge,
                     color = colourScheme.text
                 )
             }
             Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.End) {
-                Text("$runtime", Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodyLarge, color = colourScheme.text)
+                Text("${track.runtime}", Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodyLarge, color = colourScheme.text)
                 Spacer(Modifier.width(15.dp))
-                IconButton(onClick = ::TODO) {
-                    Image(Icons.Default.MoreVert, "More options (coming soon)")
-                }
+                TrackOptionsButton(track)
             }
         }
         HorizontalDivider()
