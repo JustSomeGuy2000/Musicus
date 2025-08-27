@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -124,12 +125,7 @@ fun MainContent() {
     Surface(shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxSize()) {
         Column {
             Row {
-                IconButton({ musicRepo.deduplicate() }) {
-                    Icon(Icons.Default.Build, "Debug button")
-                }
-                IconButton({ musicRepo.arrangeTracks(exJSONContainer) }) {
-                    Icon(Icons.Default.Edit, "Load from example data")
-                }
+                Text("Space for icon buttons", style = MaterialTheme.typography.bodyMedium, color = colourScheme.text)
             }
             when (state.mainScreen.selected) {
                 MainScreenTabs.ALBUMS -> {

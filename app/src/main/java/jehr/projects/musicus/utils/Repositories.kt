@@ -17,8 +17,13 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
                 val playlists: MutableMap<String, Playlist> = mutableMapOf(),
                 val artists: MutableMap<String, Artist> = mutableMapOf(),
                 val albums: MutableMap<String, Playlist> = mutableMapOf()) {
+
     fun arrangeTracks(data: JsonContainer) {
         Log.d("FILE I/O", "Received data to arrange: $data.")
+        this.tracks.clear()
+        this.artists.clear()
+        this.albums.clear()
+        this.playlists.clear()
         val finalTrackList = mutableListOf<Track>()
         for (artist in data.artists) {
             this.artists.put(artist.name, artist.toArtist())
@@ -129,34 +134,34 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
 
     /**Print all tracks, playlists, albums and artists in memory to Logcat.*/
     fun dump(level: (String, String) -> Unit = Log::v) {
-        val tag = "GVM DUMP"
+        val tag = DebugSettings.GvmDump
         var info = "Tracks:\n"
         for ((ind, track) in this.tracks.withIndex()) {
             info += "$ind: ${track.name} - ${track.artists}\n"
         }
-        level(tag, info)
+        debugLog(level, tag, info)
         info = "Albums:\n"
         for ((ind, album) in this.albums.values.toList().withIndex()) {
             info += "$ind: ${album.name}\n"
         }
-        level(tag, info)
+        debugLog(level, tag, info)
         info = "Playlists:\n"
         for ((ind, pl) in this.artists.values.toList().withIndex()) {
             info += "$ind: ${pl.name}\n"
         }
-        level(tag, info)
+        debugLog(level, tag, info)
         info = "Artists:\n"
         for ((ind, artist) in this.artists.values.toList().withIndex()) {
             info += "$ind: ${artist.name}\n"
         }
-        level(tag, info)
+        debugLog(level, tag, info)
     }
 
     /**Retrieve the file paths for all audio present in the MediaStore. Still testing.*/
     fun getAllAudioPaths(cursor: Cursor? = null): List<String>? {
         val cr = infoRepo.contentResolver
         if (cr == null) {
-            Log.w("MEDIASTORE QUERY", "No content resolver, aborting.")
+            debugLog("w", DebugSettings.MediastoreQuery, "No content resolver, aborting.")
             return null
         }
         val returnColumns = arrayOf(MediaStore.Audio.Media.DATA, MediaStore.Audio.Media.IS_MUSIC)
@@ -169,13 +174,13 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
             MediaStore.Audio.Media.DEFAULT_SORT_ORDER
         )
         if (mediaCursor == null) {
-            Log.w("MEDIASTORE QUERY", "Cursor is null, aborting.")
+            debugLog("w", DebugSettings.MediastoreQuery, "Cursor is null, aborting.")
             return null
         }
-        Log.d("MEDIASTORE QUERY", "Amount of returned entries: ${mediaCursor.count}")
+        debugLog("d", DebugSettings.MediastoreQuery, "Amount of returned entries: ${mediaCursor.count}")
         mediaCursor.apply {
             if (!moveToFirst()) {
-                Log.w("MEDIASTORE QUERY", "Cursor is empty, aborting.")
+                debugLog("w", DebugSettings.MediastoreQuery, "Cursor is empty, aborting.")
                 return null
             }
             val colIndData = mediaCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
@@ -203,15 +208,15 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
     fun deduplicate() {
         val toRemove = mutableListOf<Track>()
         for (track in this.tracks) {
-            Log.d("DEDUPLICATION", "Track: $track")
-            Log.d("DEDUPLICATION", "First encounter: ${this.tracks.indexOf(track)}")
-            Log.d("DEDUPLICATION", "Last encounter: ${this.tracks.lastIndexOf(track)}")
+            debugLog("d", DebugSettings.Deduplication, "Track: $track")
+            debugLog("d", DebugSettings.Deduplication, "First encounter: ${this.tracks.indexOf(track)}")
+            debugLog("d", DebugSettings.Deduplication, "Last encounter: ${this.tracks.lastIndexOf(track)}")
             if (this.tracks.indexOf(track) != this.tracks.lastIndexOf(track) && track !in toRemove) {
                 toRemove.add(track)
             }
         }
         for (track in toRemove) {
-            Log.d("DEDUPLICATION", "Removing track $track")
+            debugLog("d", DebugSettings.Deduplication, "Removing track $track")
             track.delete()
         }
     }
@@ -229,7 +234,7 @@ class InfoRepo(var contentResolver: ContentResolver? = null,
             if (!this.dataFile!!.exists()) {
                 this.dataFile!!.createNewFile()
             }
-            Log.d("FILE I/O", "Accessed metadata file ${dataFile!!.path}.")
+            debugLog("d", DebugSettings.FileIO, "Accessed metadata file ${dataFile!!.path}.")
         }
         if (this.contentResolver == null || force) {
             this.contentResolver = ctx.contentResolver

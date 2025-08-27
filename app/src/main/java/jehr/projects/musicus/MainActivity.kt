@@ -2,7 +2,6 @@ package jehr.projects.musicus
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,10 +23,12 @@ import jehr.projects.musicus.ui.theme.colourScheme
 import jehr.projects.musicus.ui.theme.darkColourScheme
 import jehr.projects.musicus.ui.theme.lightColourScheme
 import jehr.projects.musicus.utils.ArtistScreenRoute
+import jehr.projects.musicus.utils.DebugSettings
 import jehr.projects.musicus.utils.GlobalViewModel
 import jehr.projects.musicus.utils.JsonContainer
 import jehr.projects.musicus.utils.MainScreenRoute
 import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.debugLog
 import jehr.projects.musicus.utils.exJSONContainer
 import jehr.projects.musicus.utils.infoRepo
 import jehr.projects.musicus.utils.musicRepo
@@ -57,12 +58,13 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 musicRepo.arrangeTracks(Json.decodeFromString<JsonContainer>( infoRepo.dataFile!!.readText()))
+                musicRepo.dump()
             } catch(e: Exception) {
-                Log.e("METADATA READ", "Data read failed: $e.")
-                Log.d("METADATA READ", "Defaulting to example data...")
+                debugLog("e", DebugSettings.MetadataRead, "Data read failed: $e.")
+                debugLog("d", DebugSettings.MetadataRead, "Defaulting to example data...")
                 musicRepo.arrangeTracks(exJSONContainer)
             }
-            Log.d("MEDIASTORE QUERY", "Result: ${musicRepo.getAllAudioPaths()}")
+            debugLog("d", DebugSettings.MediastoreQuery, "Result: ${musicRepo.getAllAudioPaths()}")
         }
         super.onResume()
     }
@@ -75,8 +77,9 @@ class MainActivity : ComponentActivity() {
                 musicRepo.artists.map { it.value.toSkeleton() },
                 musicRepo.albums.map { it.value.toSkeleton() })
         )
+        musicRepo.dump()
         infoRepo.dataFile?.writeText(write)
-        Log.d("FILE I/O", "Wrote to ${infoRepo.dataFile?.path} with content $write.")
+        debugLog("d", DebugSettings.FileIO, "Wrote to ${infoRepo.dataFile?.path} with content $write.")
         super.onPause()
     }
 }
@@ -84,10 +87,10 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "Main Menu Light")
 @Composable
 fun NavWrapper() {
-    if (isSystemInDarkTheme()) {
-        colourScheme = darkColourScheme
+    colourScheme = if (isSystemInDarkTheme()) {
+        darkColourScheme
     } else {
-        colourScheme = lightColourScheme
+        lightColourScheme
     }
     val navController = rememberNavController()
     infoRepo.navController = navController
@@ -103,3 +106,7 @@ fun NavWrapper() {
 fun GlobalVmViewer(vmso: ViewModelStoreOwner, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalViewModelStoreOwner provides vmso) { content() }
 }
+
+// When the app is exited, songs are not duplicated.
+// When the app is re-entered, songs are not duplicated in JSON, but they are in the track list.
+// Something is wrong with the JSON unpacking mechanism.
