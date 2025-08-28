@@ -153,8 +153,8 @@ fun InfoRow(label: String, content: String) {
 
 @Composable
 fun TwoSidedRow(left: @Composable () -> Unit, right: @Composable () -> Unit) {
-    Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
-        Row (verticalAlignment = Alignment.CenterVertically) {left()}
-        Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {right()}
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f)){left()}
+        Row{right()}
     }
 }

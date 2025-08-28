@@ -166,6 +166,11 @@ data class Track(
     }
 
     fun toSkeleton() = TrackSkeleton(this.path, this.name, this.originalName, this.lang, this.origin, this.originInfo, this.runtime, this.cover, this.originalLang, this.album, this.playlists, this.artists, this.imgPath, this.dateAdded, this.timesPlayed, this.stdLyrics?.toSkeleton(), this.trnLyrics?.toSkeleton(), this.romLyrics?.toSkeleton(), this.selectedLyrics, this.desc)
+
+    /**Take in a map in a predetermined format and manually extract information from it.*/
+    fun importFromMap(source: Map<String, String>) {
+
+    }
 }
 @Serializable
 data class TrackSkeleton(val path: String, val name: String, val originalName: String?, val lang: MutableList<String>, val origin: String, val originInfo: String?, val runtime: Duration, val cover: Boolean, val originalLang: MutableList<String>, val album: String?, val playlists: MutableList<String>, val artists: MutableList<String>, val imgPath: String?, val dateAdded: MusicusDate?, val timesPlayed: Int, val stdLyrics: LyricsSkeleton?, val trnLyrics: LyricsSkeleton?, val romLyrics: LyricsSkeleton?, val selectedLyrics: Int, val desc: String?) {
@@ -280,6 +285,10 @@ data class TrackEditScreenRoute(val trackPos: Int)
 /*Others*/
 @Serializable
 data class JsonContainer(val tracks: List<TrackSkeleton>, val playlists: List<SongCollectionSkeleton>, val artists: List<SongCollectionSkeleton>, val albums: List<SongCollectionSkeleton>)
+
+enum class FieldTypes(val id: String) {
+    FREETEXT("freetext"), AIDEDTEXT("aided text"), PATH("path"), BOOLEAN("boolean"), LEGEND("freeText/aidText/path/bool")
+}
 
 @Composable
 fun StandardBodyText(text: String) {
