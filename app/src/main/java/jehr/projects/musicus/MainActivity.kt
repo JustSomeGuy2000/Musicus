@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import jehr.projects.musicus.screens.ArtistScreen
 import jehr.projects.musicus.screens.MainScreen
+import jehr.projects.musicus.screens.PlayScreen
 import jehr.projects.musicus.screens.PlaylistScreen
 import jehr.projects.musicus.screens.TrackDataScreen
 import jehr.projects.musicus.screens.TrackEditScreen
@@ -29,6 +30,7 @@ import jehr.projects.musicus.utils.DebugSettings
 import jehr.projects.musicus.utils.GlobalViewModel
 import jehr.projects.musicus.utils.JsonContainer
 import jehr.projects.musicus.utils.MainScreenRoute
+import jehr.projects.musicus.utils.PlayScreenRoute
 import jehr.projects.musicus.utils.PlaylistScreenRoute
 import jehr.projects.musicus.utils.TrackDataScreenRoute
 import jehr.projects.musicus.utils.TrackEditScreenRoute
@@ -73,13 +75,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        val write = Json.encodeToString(
-            JsonContainer(
-                musicRepo.tracks.map { it.toSkeleton() },
-                musicRepo.playlists.map { it.value.toSkeleton() },
-                musicRepo.artists.map { it.value.toSkeleton() },
-                musicRepo.albums.map { it.value.toSkeleton() })
-        )
+        val write = Json.encodeToString(musicRepo.toJsonContainer())
         infoRepo.dataFile?.writeText(write)
         debugLog("d", DebugSettings.FileIO, "Wrote to ${infoRepo.dataFile?.path} with content $write.")
         super.onPause()
@@ -102,6 +98,7 @@ fun NavWrapper() {
         composable<ArtistScreenRoute> { entry -> ArtistScreen(entry.toRoute()) }
         composable<TrackDataScreenRoute> { entry -> TrackDataScreen(entry.toRoute()) }
         composable<TrackEditScreenRoute> { entry -> TrackEditScreen(entry.toRoute()) }
+        composable<PlayScreenRoute> { entry -> PlayScreen(entry.toRoute()) }
     }
 }
 

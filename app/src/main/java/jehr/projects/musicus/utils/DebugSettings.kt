@@ -3,7 +3,7 @@ package jehr.projects.musicus.utils
 import android.util.Log
 
 enum class DebugSettings(val tag: String, val enabled: Boolean) {
-    MetadataRead("METADATA READ", true), MediastoreQuery("MEDIASTORE QUERY", true), FileIO("FILE I/O", true), GvmDump("GVM DUMP", true), Deduplication("DEDUPLICATION", true), RANDOM("RANDOM", true)
+    MetadataRead("METADATA READ", true), MediastoreQuery("MEDIASTORE QUERY", true), FileIO("FILE I/O", true), GvmDump("GVM DUMP", true), Deduplication("DEDUPLICATION", true), RANDOM("RANDOM", true), EditFailure("EDIT FAILURE", true)
 }
 
 fun debugLog(level: String, tag: DebugSettings, message: String, force: Boolean = false) {

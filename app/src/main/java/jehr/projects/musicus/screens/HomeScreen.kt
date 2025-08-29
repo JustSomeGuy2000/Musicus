@@ -3,6 +3,7 @@ package jehr.projects.musicus.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,14 +49,17 @@ import jehr.projects.musicus.ui.theme.MusicusTheme
 import jehr.projects.musicus.ui.theme.colourScheme
 import jehr.projects.musicus.utils.ArtistScreenRoute
 import jehr.projects.musicus.utils.GlobalViewModel
+import jehr.projects.musicus.utils.JsonContainer
 import jehr.projects.musicus.utils.MainScreenRoute
 import jehr.projects.musicus.utils.MainScreenTabs
 import jehr.projects.musicus.utils.Playlist
 import jehr.projects.musicus.utils.PlaylistScreenRoute
+import jehr.projects.musicus.utils.SongCollectionSkeleton
 import jehr.projects.musicus.utils.Track
 import jehr.projects.musicus.utils.TrackDataScreenRoute
 import jehr.projects.musicus.utils.infoRepo
 import jehr.projects.musicus.utils.musicRepo
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(startOn: MainScreenRoute) {
@@ -125,10 +131,19 @@ fun NavRow(startOn: MainScreenRoute) {
 fun MainContent() {
     val gvm: GlobalViewModel = viewModel()
     val state = gvm.publicState.collectAsStateWithLifecycle().value
+    val coroScope = rememberCoroutineScope()
     Surface(shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxSize()) {
         Column {
-            Row {
-                Text("Space for icon buttons", style = MaterialTheme.typography.bodyMedium, color = colourScheme.text)
+            Row(horizontalArrangement = Arrangement.End) {
+                IconButton({
+                    coroScope.launch {
+                        val oldContainer = musicRepo.toJsonContainer()
+                        val newContainer =
+                            JsonContainer(oldContainer.tracks, listOf(), listOf(), listOf())
+                        musicRepo.arrangeTracks(newContainer)
+                    }}) {
+                    Icon(Icons.Default.Refresh, "Reload list")
+                }
             }
             when (state.mainScreen.selected) {
                 MainScreenTabs.ALBUMS -> {

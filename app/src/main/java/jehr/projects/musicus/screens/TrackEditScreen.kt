@@ -2,6 +2,8 @@ package jehr.projects.musicus.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +40,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,16 +72,20 @@ fun TrackEditScreen(route: TrackEditScreenRoute) {
     val paths = remember{mutableStateMapOf("Key" to "Path", "Image Path" to "Coming Soon...", "Original Lyrics" to (track.stdLyrics?.path ?: "None"), "Romanised Lyrics" to (track.romLyrics?.path ?: "None"), "Translated Lyrics" to (track.trnLyrics?.path ?: "None"))}
     val bools = remember{mutableStateMapOf("Key" to true, "Cover" to track.cover)}
     val aids = mapOf("Key" to mutableListOf("List", "of", "Options"), "Language" to langList.langList, "Original Language" to langList.langList, "Album" to musicRepo.albums.keys.toMutableList(), "Artists" to musicRepo.artists.keys.toMutableList())
-    val fields = mapOf("Key" to FieldTypes.LEGEND, "Image Path" to path, "Name" to freeText, "Original Name" to freeText, "Description" to freeText, "Artists" to aidText, "Language" to aidText, "Original Language" to aidText,"Origin" to freeText, "Origin Info" to freeText, "Cover" to bool, "Album" to aidText, "Original Lyrics" to path, "Romanised Lyrics" to path, "Translated Lyrics" to path)
+    val fields = mapOf("Key" to FieldTypes.LEGEND, "Image Path" to path, "Name" to freeText, "Original Name" to freeText, "Description" to freeText, "Artists" to aidText, "Language" to aidText, "Original Language" to aidText, "Origin" to freeText, "Origin Info" to freeText, "Cover" to bool, "Album" to aidText, "Original Lyrics" to path, "Romanised Lyrics" to path, "Translated Lyrics" to path)
+    val mui = remember{ MutableInteractionSource() }
+    val focusReq = remember { FocusRequester() }
+    val focusMngr = LocalFocusManager.current
     MusicusTheme(dynamicColor = false) {
         Surface(modifier = Modifier
             .background(colourScheme.background)
             .fillMaxSize()
-            .statusBarsPadding(), color = colourScheme.background) {
+            .statusBarsPadding()
+            .focusRequester(focusReq)
+            .clickable(mui, null) { focusMngr.clearFocus() }, color = colourScheme.background) {
             Column {
                 TrackEditTopBar()
                 TrackEditBody(tfvs, paths, bools, aids, fields, track)
-                //TrackEditBottomBar(tfvs, paths, bools, track)
             }
         }
     }

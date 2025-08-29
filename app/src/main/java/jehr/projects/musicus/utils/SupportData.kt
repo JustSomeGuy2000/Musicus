@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
+import kotlin.text.iterator
 
 /*Music-related data*/
 @Serializable
@@ -169,7 +170,61 @@ data class Track(
 
     /**Take in a map in a predetermined format and manually extract information from it.*/
     fun importFromMap(source: Map<String, String>) {
-
+        this.imgPath = source["Image Path"] ?: this.imgPath
+        this.name = source["Name"] ?: this.name
+        this.originalName = source["Original Name"] ?: this.originalName
+        this.desc = source["Description"] ?: this.desc
+        if (source.containsKey("Artists")) {
+            for (artist in this.artists) {
+                musicRepo.artists[artist]?.tracks?.remove(this)
+            }
+            this.artists.clear()
+            val extractedArtists = split(source["Artists"] ?: "")
+            this.artists.addAll(extractedArtists)
+            for (artist in extractedArtists) {
+                if (!musicRepo.artists.containsKey(artist)) {
+                    musicRepo.artists.put(artist, Artist(mutableListOf(this), artist))
+                } else {
+                    musicRepo.artists[artist]?.tracks?.add(this)
+                }
+            }
+        }
+        if (source.containsKey("Language")) {
+            this.lang = split(source["Language"] ?: "").toMutableList()
+            for (lang in this.lang) {
+                langList.createIfNotFound(lang)
+            }
+        }
+        if (source.containsKey("Original Language")) {
+            this.originalLang = split(source["Original Language"] ?: "").toMutableList()
+            for (lang in this.originalLang) {
+                langList.createIfNotFound(lang)
+            }
+        }
+        this.origin = source["Origin"] ?: this.origin
+        this.originInfo = source["Origin Info"] ?: this.originInfo
+        this.cover = source["Cover"]?.toBoolean() ?: this.cover
+        this.album = source["Album"] ?: this.album
+        if (this.album != null && !musicRepo.albums.containsKey(this.album)) {
+            musicRepo.albums.put(this.album!!, Playlist(mutableListOf(this), name = this.album!!))
+            musicRepo.albums[this.album]?.sortArtists()
+        }
+        if (source.containsKey("Original Lyrics") && source["Original Lyrics"] != "None") {
+            this.stdLyrics = Lyrics(source["Original Lyrics"]!!)
+        } else {
+            this.stdLyrics = null
+        }
+        if (source.containsKey("Romanised Lyrics") && source["Romanised Lyrics"] != "None") {
+            this.romLyrics = Lyrics(source["Romanised Lyrics"]!!)
+        } else {
+            this.romLyrics = null
+        }
+        if (source.containsKey("Translated Lyrics") && source["Translated Lyrics"] != "None") {
+            this.trnLyrics = Lyrics(source["Translated Lyrics"]!!)
+        } else {
+            this.trnLyrics = null
+        }
+        musicRepo.cleanEmptyCollections()
     }
 }
 @Serializable
@@ -219,7 +274,7 @@ class Playlist(tracks: MutableList<Track> = mutableListOf(), imgPath: String? = 
         this.primaryArtist = artistCount.first[0]
     }
 
-    /**Add this album to the album lists of all rleevant artists.*/
+    /**Add this album to the album lists of all relevant artists.*/
     fun addToArtists() {
         for (artist in this.artists.keys) {
             if (this.name !in artist.albums.keys) {
@@ -281,6 +336,8 @@ data class ArtistScreenRoute(val artistName: String)
 data class TrackDataScreenRoute(val trackPos: Int)
 @Serializable
 data class TrackEditScreenRoute(val trackPos: Int)
+@Serializable
+data class PlayScreenRoute(val trackPos: Int)
 
 /*Others*/
 @Serializable
@@ -290,7 +347,39 @@ enum class FieldTypes(val id: String) {
     FREETEXT("freetext"), AIDEDTEXT("aided text"), PATH("path"), BOOLEAN("boolean"), LEGEND("freeText/aidText/path/bool")
 }
 
-@Composable
-fun StandardBodyText(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.inversePrimary)
+/**Split a string into a list of substrings according to a delimiter, optionally taking into account escapes and strpping whitespace.*/
+fun split(source: String, delimiter: String = ",", escape: String? = "\\", strip: Boolean = true): List<String> {
+    val result = mutableListOf<String>()
+    var buffer = ""
+    var ignore = false
+    var pointer = 0
+    for (char in source) {
+        buffer += char
+        pointer += 1
+        val consider = buffer.substring(buffer.length-delimiter.length, buffer.length)
+        if (consider == delimiter && !ignore) {
+            buffer = buffer.substring(0, buffer.length-delimiter.length)
+            if (strip) {
+                buffer = buffer.trim()
+            }
+            result.add(buffer)
+            buffer = ""
+            ignore = false
+        } else if (pointer == source.length) {
+            if (strip) {
+                buffer = buffer.trim()
+            }
+            result.add(buffer)
+        } else if (escape != null && consider == escape) {
+            if (ignore) {
+                buffer += escape
+                ignore = false
+            } else {
+                ignore = true
+            }
+        } else if (ignore) {
+            ignore = false
+        }
+    }
+    return result.toList()
 }

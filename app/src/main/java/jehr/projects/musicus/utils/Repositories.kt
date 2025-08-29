@@ -204,7 +204,7 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
         TODO()
     }
 
-    /**Remove duplicate entries from the track list. Not sure why they would crop up in the first place, but they do.*/
+    /**Remove duplicate entries from the track list. Not sure why they would crop up in the first place, but they might.*/
     fun deduplicate() {
         val toRemove = mutableListOf<Track>()
         for (track in this.tracks) {
@@ -219,6 +219,15 @@ class MusicRepo(val tracks: MutableList<Track> = mutableListOf(),
             debugLog("d", DebugSettings.Deduplication, "Removing track $track")
             track.delete()
         }
+    }
+
+    /**Convert the contents of the repo to a JSON container.*/
+    fun toJsonContainer(): JsonContainer {
+        return JsonContainer(
+                musicRepo.tracks.map { it.toSkeleton() },
+                musicRepo.playlists.map { it.value.toSkeleton() },
+                musicRepo.artists.map { it.value.toSkeleton() },
+                musicRepo.albums.map { it.value.toSkeleton() })
     }
 }
 
